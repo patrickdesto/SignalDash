@@ -400,54 +400,92 @@ function pushAlert(tf, rsi, zone, color) {
 }
 
 /* ════════════════════════════════════════════════════════
-   MOCK RSI DATA — simulates live market movement
+   BINANCE — datos reales  (API pública, sin API key)
    ════════════════════════════════════════════════════════ */
 
-// Each TF has its own RSI state with random walk + mean reversion
-const mockState = {
-  '15m': { val: 22, vel: 0.8, mean: 50, volatility: 2.8 },
-  '1h':  { val: 55, vel: 0.3, mean: 50, volatility: 1.8 },
-  '4h':  { val: 71, vel: 0.2, mean: 50, volatility: 1.2 },
-  '1d':  { val: 44, vel: 0.1, mean: 50, volatility: 0.7 },
-};
+const SYMBOL      = 'BTCUSDT';
+const RSI_PERIOD  = 14;
+const TF_INTERVAL = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
 
-function tickMockRSI() {
-  Object.entries(mockState).forEach(([tf, s]) => {
-    const noise      = (Math.random() - 0.5) * s.volatility * 2;
-    const meanPull   = (s.mean - s.val) * 0.015;
-    const momentum   = s.vel * 0.6;
-    s.vel = noise + meanPull + momentum;
-    s.vel = Math.max(-4, Math.min(4, s.vel));
-    s.val = Math.max(3, Math.min(97, s.val + s.vel));
+// ─── RSI de Wilder (smoothing exponencial) ───
+function calcRSI(closes, period) {
+  if (closes.length < period + 1) return null;
 
-    // Occasional macro shifts (makes it more interesting)
-    if (Math.random() < 0.03) {
-      s.mean = 20 + Math.random() * 60;  // shift the attractor
-    }
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
 
-    // Track prev RSI for delta display (update every interval)
-    prevRsi[tf] = targets[tf];
-    targets[tf] = s.val;
-  });
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(d, 0))  / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
+  }
+
+  if (avgLoss === 0) return 100;
+  return 100 - 100 / (1 + avgGain / avgLoss);
 }
 
-/* ─── Price mock ─── */
-let mockPrice = 94850;
-let mockPriceVel = 0;
-function tickMockPrice() {
-  const noise = (Math.random() - 0.5) * 300;
-  const pull  = (94000 - mockPrice) * 0.01;
-  mockPriceVel = mockPriceVel * 0.7 + noise + pull;
-  mockPrice = Math.max(80000, Math.min(110000, mockPrice + mockPriceVel));
+// ─── Klines → RSI para un timeframe ───
+async function fetchRSI(tf) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF_INTERVAL[tf]}&limit=100`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = await r.json();
+  const closes = data.map(k => parseFloat(k[4]));
+  return calcRSI(closes, RSI_PERIOD);
+}
 
-  const priceEl  = document.getElementById('pairPrice');
-  const changeEl = document.getElementById('pairChange');
-  if (priceEl) priceEl.textContent = '$' + mockPrice.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  if (changeEl) {
-    const pct = ((mockPrice - 94850) / 94850 * 100).toFixed(2);
-    const up  = parseFloat(pct) >= 0;
-    changeEl.textContent = (up ? '+' : '') + pct + '%';
-    changeEl.className   = `pair-change ${up ? 'up' : 'down'}`;
+// ─── Ticker 24h → precio + cambio % ───
+async function fetchTicker() {
+  const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${SYMBOL}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ─── Indicador de estado en el header ───
+function setStatus(ok) {
+  const dot  = document.querySelector('.status-dot');
+  const text = document.querySelector('.status-text');
+  if (dot)  dot.style.background = ok ? '' : '#ef4444';
+  if (text) text.textContent = ok ? 'En vivo · Binance' : 'Error conexión';
+}
+
+// ─── Actualiza los 4 timeframes en paralelo ───
+async function updateAllRSI() {
+  const tfs = ['15m', '1h', '4h', '1d'];
+  const results = await Promise.allSettled(tfs.map(fetchRSI));
+  let anyOk = false;
+  results.forEach((res, i) => {
+    if (res.status === 'fulfilled' && res.value !== null) {
+      const tf = tfs[i];
+      prevRsi[tf] = targets[tf];
+      targets[tf] = Math.max(3, Math.min(97, res.value));
+      anyOk = true;
+    }
+  });
+  setStatus(anyOk);
+}
+
+// ─── Actualiza precio en pair-bar ───
+async function updatePrice() {
+  try {
+    const t    = await fetchTicker();
+    const price = parseFloat(t.lastPrice);
+    const pct   = parseFloat(t.priceChangePercent);
+    const priceEl  = document.getElementById('pairPrice');
+    const changeEl = document.getElementById('pairChange');
+    if (priceEl) priceEl.textContent = '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (changeEl) {
+      const up = pct >= 0;
+      changeEl.textContent = (up ? '+' : '') + pct.toFixed(2) + '%';
+      changeEl.className   = `pair-change ${up ? 'up' : 'down'}`;
+    }
+  } catch (e) {
+    console.warn('Price fetch error:', e.message);
   }
 }
 
@@ -456,20 +494,19 @@ function tickMockPrice() {
    ════════════════════════════════════════════════════════ */
 ['15m', '1h', '4h', '1d'].forEach(tf => buildGauge(`gauge-${tf}`));
 
-// Kick off RAF loop for smooth animation
+// Animación RAF
 rafLoop();
 
-// Initial RSI render (so gauges show data immediately)
-Object.entries(mockState).forEach(([tf, s]) => {
-  animated[tf] = s.val;
-  targets[tf]  = s.val;
-  prevZones[tf] = getZone(s.val).label;
-  applyGaugeUI(tf, s.val);
+// Render inicial en RSI 50 mientras llega el primer fetch
+['15m', '1h', '4h', '1d'].forEach(tf => {
+  animated[tf]  = 50;
+  targets[tf]   = 50;
+  prevZones[tf] = getZone(50).label;
+  applyGaugeUI(tf, 50);
 });
 
-// RSI tick every 2.5s (simulates new bar/update)
-setInterval(tickMockRSI, 2500);
-
-// Price tick every 1.2s
-tickMockPrice();
-setInterval(tickMockPrice, 1200);
+// Primera carga inmediata, luego cada 30 segundos
+updateAllRSI();
+updatePrice();
+setInterval(updateAllRSI, 30_000);
+setInterval(updatePrice,  30_000);
