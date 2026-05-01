@@ -16,7 +16,7 @@ function showSection(id) {
     s.classList.toggle('sec-hidden', s.id !== id);
   });
   if (id === 'sec-comparaciones' && typeof compData !== 'undefined' && compData) {
-    setTimeout(() => renderPerfChart(compData, compPeriod), 60);
+    setTimeout(() => renderCompViews(), 60);
   }
 }
 
@@ -83,19 +83,19 @@ function donutArc(ro, ri, a1, a2) {
 
 /* ─── Color gradient stops (RSI 0→100) ─── */
 const COLOR_STOPS = [
-  { rsi: 0,   hex: '#0369a1' },  // deep blue
-  { rsi: 20,  hex: '#38bdf8' },  // blue
-  { rsi: 26,  hex: '#38bdf8' },  // blue edge
-  { rsi: 33,  hex: '#7a8fa8' },  // blue-slate
-  { rsi: 40,  hex: '#475569' },  // slate
-  { rsi: 47,  hex: '#3a8a5a' },  // slate-green
-  { rsi: 50,  hex: '#22c55e' },  // green center
-  { rsi: 53,  hex: '#3a8a5a' },  // green-slate
-  { rsi: 60,  hex: '#475569' },  // slate
-  { rsi: 67,  hex: '#a05050' },  // slate-red
-  { rsi: 74,  hex: '#ef4444' },  // red edge
-  { rsi: 87,  hex: '#ef4444' },  // red
-  { rsi: 100, hex: '#991b1b' },  // deep red
+  { rsi: 0,   hex: '#1a3f5c' },
+  { rsi: 20,  hex: '#2d6e96' },
+  { rsi: 26,  hex: '#2d6e96' },
+  { rsi: 33,  hex: '#4a6278' },
+  { rsi: 40,  hex: '#384858' },
+  { rsi: 47,  hex: '#2a5e42' },
+  { rsi: 50,  hex: '#3a8a5c' },
+  { rsi: 53,  hex: '#2a5e42' },
+  { rsi: 60,  hex: '#384858' },
+  { rsi: 67,  hex: '#6a3838' },
+  { rsi: 74,  hex: '#a04040' },
+  { rsi: 87,  hex: '#a04040' },
+  { rsi: 100, hex: '#6a2020' },
 ];
 
 function hexToRgb(h) {
@@ -120,20 +120,20 @@ function getRSIColor(rsi) {
 
 /* ─── Zone info (label, signal) ─── */
 function getZone(rsi) {
-  if (rsi < 26)           return { label: 'SOBREVENTA',  signal: '⬇ Buscar largo',   cls: 'a-blue',   bar: '#38bdf8' };
-  if (rsi < 40)           return { label: 'TRANSICIÓN',  signal: '– Esperar señal',  cls: 'a-orange', bar: '#64748b' };
-  if (rsi <= 60)          return { label: 'EJECUCIÓN',   signal: '✓ Zona de gatillo', cls: 'a-green',  bar: '#22c55e' };
-  if (rsi < 74)           return { label: 'TRANSICIÓN',  signal: '– Esperar señal',  cls: 'a-orange', bar: '#64748b' };
-  return                         { label: 'SOBRECOMPRA', signal: '⬆ Buscar corto',   cls: 'a-red',    bar: '#ef4444' };
+  if (rsi < 26)           return { label: 'SOBREVENTA',  signal: '⬇ Buscar largo',    cls: 'a-blue',   bar: '#2d6e96' };
+  if (rsi < 40)           return { label: 'TRANSICIÓN',  signal: '– Esperar señal',   cls: 'a-orange', bar: '#4a5c6e' };
+  if (rsi <= 60)          return { label: 'EJECUCIÓN',   signal: '✓ Zona de gatillo', cls: 'a-green',  bar: '#3a8a5c' };
+  if (rsi < 74)           return { label: 'TRANSICIÓN',  signal: '– Esperar señal',   cls: 'a-orange', bar: '#4a5c6e' };
+  return                         { label: 'SOBRECOMPRA', signal: '⬆ Buscar corto',    cls: 'a-red',    bar: '#a04040' };
 }
 
 /* ─── Static gauge background (zones + ticks + labels) ─── */
 const ZONE_SEGS = [
-  { rsi0: 0,  rsi1: 26,  color: '#38bdf8', opacity: 0.55 },
-  { rsi0: 26, rsi1: 40,  color: '#475569', opacity: 0.20 },
-  { rsi0: 40, rsi1: 60,  color: '#22c55e', opacity: 0.55 },
-  { rsi0: 60, rsi1: 74,  color: '#475569', opacity: 0.20 },
-  { rsi0: 74, rsi1: 100, color: '#ef4444', opacity: 0.55 },
+  { rsi0: 0,  rsi1: 26,  color: '#2d6e96', opacity: 0.42 },
+  { rsi0: 26, rsi1: 40,  color: '#384858', opacity: 0.18 },
+  { rsi0: 40, rsi1: 60,  color: '#3a8a5c', opacity: 0.42 },
+  { rsi0: 60, rsi1: 74,  color: '#384858', opacity: 0.18 },
+  { rsi0: 74, rsi1: 100, color: '#a04040', opacity: 0.42 },
 ];
 
 const TICK_RSIS  = [0, 26, 40, 50, 60, 74, 100];
@@ -654,31 +654,36 @@ const COMP_ASSETS = [
   'BTCUSDT','ETHUSDT','XRPUSDT','BNBUSDT','SOLUSDT','ADAUSDT',
   'BCHUSDT','LINKUSDT','XLMUSDT','TONUSDT','AVAXUSDT','SUIUSDT',
   'TAOUSDT','DOTUSDT','UNIUSDT','NEARUSDT','AAVEUSDT','ALGOUSDT',
-  'ENAUSDT','INKUSDT','RNDRUSDT','FETUSDT'
+  'ENAUSDT','INJUSDT','RNDRUSDT','FETUSDT'
 ];
+const AI_ASSETS = ['TAOUSDT','FETUSDT','RNDRUSDT','NEARUSDT','INJUSDT'];
 
 const COMP_COLORS = {
-  BTCUSDT: '#F7931A', ETHUSDT: '#8A92B2', XRPUSDT: '#00AAE4',
-  BNBUSDT: '#F0B90B', SOLUSDT: '#9945FF', ADAUSDT: '#0D86FF',
-  BCHUSDT: '#8DC351', LINKUSDT:'#2A5ADA', XLMUSDT: '#14B6E7',
-  TONUSDT: '#0098EA', AVAXUSDT:'#E84142', SUIUSDT: '#6FBCF0',
-  TAOUSDT: '#57B8B7', DOTUSDT: '#E6007A', UNIUSDT: '#FF007A',
-  NEARUSDT:'#00EC97', AAVEUSDT:'#B6509E', ALGOUSDT:'#00B4D8',
-  ENAUSDT: '#A6E22E', INKUSDT: '#FF6B35', RNDRUSDT:'#FF8C00',
-  FETUSDT: '#1EC9E8'
+  BTCUSDT:  '#b87c28', ETHUSDT:  '#6370a0', XRPUSDT:  '#2878a8',
+  BNBUSDT:  '#a88828', SOLUSDT:  '#6e38b8', ADAUSDT:  '#2060a8',
+  BCHUSDT:  '#5a8030', LINKUSDT: '#284898', XLMUSDT:  '#1878a0',
+  TONUSDT:  '#1870b0', AVAXUSDT: '#9c3030', SUIUSDT:  '#3a70a8',
+  TAOUSDT:  '#2e7878', DOTUSDT:  '#903468', UNIUSDT:  '#903458',
+  NEARUSDT: '#1a7858', AAVEUSDT: '#683870', ALGOUSDT: '#1878a0',
+  ENAUSDT:  '#6a8828', INJUSDT:  '#1880a8', RNDRUSDT: '#b86828',
+  FETUSDT:  '#1888a8'
 };
 
-let compData   = null;
-let compPeriod = '1w';
-let compBusy   = false;
+let compData      = null;
+let compPeriod    = '1w';
+let compBusy      = false;
+let compTab       = 'global';
+let disabledGlobal = new Set();
 
-// ── Data fetch ────────────────────────────────────────────
+const PERIOD_SLICES = { '1w': 8, '1m': 31, '1y': 366 };
+
+// ── Data fetch (366 días para soportar % Año) ─────────────
 async function fetchCompData() {
   const out = {};
   await Promise.allSettled(COMP_ASSETS.map(async sym => {
     try {
       const [kr, tr] = await Promise.all([
-        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=91`),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=366`),
         fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym}`)
       ]);
       if (kr.ok && tr.ok) out[sym] = { klines: await kr.json(), ticker: await tr.json() };
@@ -687,7 +692,7 @@ async function fetchCompData() {
   return out;
 }
 
-// ── Nice Y-axis ticks ─────────────────────────────────────
+// ── Nice Y ticks ──────────────────────────────────────────
 function compNiceTicks(min, max, n) {
   const rng = max - min || 1;
   const raw = rng / n;
@@ -699,19 +704,11 @@ function compNiceTicks(min, max, n) {
   return ticks;
 }
 
-// ── Chart render ──────────────────────────────────────────
-function renderPerfChart(data, period) {
-  const canvas = document.getElementById('perfChart');
-  const loadEl = document.getElementById('compLoading');
-  if (!canvas) return;
-  if (loadEl) loadEl.style.display = 'none';
-
-  const slices = { '1w': 8, '1m': 31, '3m': 91 };
-  const sliceN  = slices[period] || 31;
-
-  // Build normalized series (% change from first candle of slice)
-  const series = [];
-  for (const sym of Object.keys(data)) {
+// ── Build normalized series ───────────────────────────────
+function buildCompSeries(data, assetList, period) {
+  const sliceN = PERIOD_SLICES[period] || 31;
+  const out = [];
+  for (const sym of assetList) {
     const klines = data[sym]?.klines;
     if (!klines || klines.length < 2) continue;
     const closes = klines.map(k => parseFloat(k[4]));
@@ -721,25 +718,25 @@ function renderPerfChart(data, period) {
     if (sc.length < 2) continue;
     const base = sc[0];
     const vals = sc.map(c => ((c / base) - 1) * 100);
-    series.push({
-      sym,
-      color: COMP_COLORS[sym] || '#888',
-      name:  sym.replace('USDT', ''),
-      vals,  ts: st,
-      cur:   vals[vals.length - 1]
-    });
+    out.push({ sym, color: COMP_COLORS[sym] || '#888', name: sym.replace('USDT',''), vals, ts: st, cur: vals[vals.length - 1] });
   }
+  return out;
+}
+
+// ── Draw chart ────────────────────────────────────────────
+function drawCompChart(series, canvasId, loadingId) {
+  const canvas = document.getElementById(canvasId);
+  const loadEl = document.getElementById(loadingId);
+  if (!canvas) return;
+  if (loadEl) loadEl.style.display = 'none';
   if (!series.length) return;
 
-  // Canvas sizing (high-DPI aware)
   const dpr  = window.devicePixelRatio || 1;
   const rect = canvas.parentElement.getBoundingClientRect();
   const W    = Math.max(Math.floor(rect.width), 300);
   const H    = Math.max(Math.floor(rect.height), 300);
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
@@ -749,26 +746,19 @@ function renderPerfChart(data, period) {
   const cW  = W - pad.l - pad.r;
   const cH  = H - pad.t - pad.b;
 
-  // Global min/max
   let minV = Infinity, maxV = -Infinity;
   for (const s of series) for (const v of s.vals) { if (v < minV) minV = v; if (v > maxV) maxV = v; }
   const rng = maxV - minV || 1;
-  minV -= rng * 0.06;
-  maxV += rng * 0.06;
+  minV -= rng * 0.06; maxV += rng * 0.06;
 
   const xOf = (i, tot) => pad.l + (i / (tot - 1)) * cW;
   const yOf = v => pad.t + cH - ((v - minV) / (maxV - minV)) * cH;
 
-  // Background
-  ctx.fillStyle = '#0b0e17';
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0b0e17'; ctx.fillRect(0, 0, W, H);
 
-  // Y grid lines + labels
   const ticks = compNiceTicks(minV, maxV, 6);
-  ctx.font = '10px "JetBrains Mono",Consolas,monospace';
-  ctx.textAlign = 'right';
-  ctx.setLineDash([3, 6]);
-  ctx.lineWidth = 1;
+  ctx.font = '10px "JetBrains Mono",Consolas,monospace'; ctx.textAlign = 'right';
+  ctx.setLineDash([3, 6]); ctx.lineWidth = 1;
   for (const t of ticks) {
     const y = yOf(t);
     if (y < pad.t - 4 || y > pad.t + cH + 4) continue;
@@ -779,137 +769,180 @@ function renderPerfChart(data, period) {
   }
   ctx.setLineDash([]);
 
-  // Zero line (highlighted)
   const y0 = yOf(0);
   if (y0 >= pad.t && y0 <= pad.t + cH) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(W - pad.r, y0); ctx.stroke();
   }
 
-  // X axis date labels
-  const refTs = series[0].ts;
-  const totPt = refTs.length;
-  ctx.fillStyle = 'rgba(255,255,255,0.28)';
-  ctx.textAlign = 'center';
+  const refTs = series[0].ts; const totPt = refTs.length;
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.textAlign = 'center';
   ctx.font = '10px "JetBrains Mono",Consolas,monospace';
   const lblN = Math.min(6, totPt - 1);
   for (let li = 0; li <= lblN; li++) {
     const di = Math.round((li / lblN) * (totPt - 1));
-    const x  = xOf(di, totPt);
     const d  = new Date(refTs[di]);
-    ctx.fillText(d.toLocaleDateString('es', { month: 'short', day: 'numeric' }), x, H - 7);
+    ctx.fillText(d.toLocaleDateString('es', { month: 'short', day: 'numeric' }), xOf(di, totPt), H - 7);
   }
 
-  // Axis borders
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(pad.l, pad.t);
-  ctx.lineTo(pad.l, pad.t + cH);
-  ctx.lineTo(W - pad.r, pad.t + cH);
-  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + cH); ctx.lineTo(W - pad.r, pad.t + cH); ctx.stroke();
 
-  // Draw lines — worst performers first so best render on top
   const drawOrder = [...series].sort((a, b) => a.cur - b.cur);
   for (const s of drawOrder) {
     const tot = s.vals.length;
-    ctx.beginPath();
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth   = 1.5;
-    ctx.globalAlpha = 0.82;
-    for (let i = 0; i < tot; i++) {
-      const x = xOf(i, tot), y = yOf(s.vals[i]);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
+    ctx.beginPath(); ctx.strokeStyle = s.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.82;
+    for (let i = 0; i < tot; i++) { const x = xOf(i, tot), y = yOf(s.vals[i]); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
     ctx.stroke();
-    // Terminal dot
     ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(xOf(tot - 1, tot), yOf(s.vals[tot - 1]), 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = s.color;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(xOf(tot - 1, tot), yOf(s.vals[tot - 1]), 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = s.color; ctx.fill();
   }
   ctx.globalAlpha = 1;
-
-  renderCompLegend(series);
 }
 
-// ── Legend (right panel, sorted best→worst) ───────────────
-function renderCompLegend(series) {
-  const legEl = document.getElementById('compLegend');
-  if (!legEl) return;
-  const sorted = [...series].sort((a, b) => b.cur - a.cur);
-  legEl.innerHTML = sorted.map(s => `
-    <div class="comp-leg-item">
-      <span class="comp-leg-sw" style="background:${s.color}"></span>
+// ── Draw legend (with optional toggle) ───────────────────
+function drawCompLegend(allSeries, disabledSet, legendId, onToggle) {
+  const el = document.getElementById(legendId);
+  if (!el) return;
+
+  const sorted = [...allSeries].sort((a, b) => {
+    const ad = disabledSet && disabledSet.has(a.sym);
+    const bd = disabledSet && disabledSet.has(b.sym);
+    if (ad !== bd) return ad ? 1 : -1;
+    return b.cur - a.cur;
+  });
+
+  el.innerHTML = sorted.map(s => {
+    const dis = disabledSet && disabledSet.has(s.sym);
+    return `<div class="comp-leg-item${dis ? ' is-off' : ''}" data-sym="${s.sym}">
+      <span class="comp-leg-sw" style="background:${dis ? '#2a2d3a' : s.color}"></span>
       <span class="comp-leg-nm">${s.name}</span>
       <span class="comp-leg-pc ${s.cur >= 0 ? 'pos' : 'neg'}">${s.cur >= 0 ? '+' : ''}${s.cur.toFixed(2)}%</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+
+  if (onToggle) {
+    el.querySelectorAll('.comp-leg-item[data-sym]').forEach(item => {
+      item.addEventListener('click', () => onToggle(item.dataset.sym));
+    });
+  }
 }
 
-// ── Performance table ─────────────────────────────────────
-function renderCompTable(data, period) {
-  const tbody = document.getElementById('compTbody');
+// ── Draw table ────────────────────────────────────────────
+function drawCompTable(data, period, activeAssets, tbodyId, thIds) {
+  const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
   const rows = [];
-  for (const sym of Object.keys(data)) {
+  for (const sym of activeAssets) {
     const { klines, ticker } = data[sym] || {};
     if (!klines || klines.length < 2) continue;
     const closes = klines.map(k => parseFloat(k[4]));
     const last   = closes[closes.length - 1];
     const price  = parseFloat(ticker.lastPrice);
     const pDay   = parseFloat(ticker.priceChangePercent);
-    const pWeek  = closes.length >= 8  ? ((last / closes[closes.length - 8])  - 1) * 100 : null;
-    const pMonth = closes.length >= 31 ? ((last / closes[closes.length - 31]) - 1) * 100 : null;
-    rows.push({ sym, name: sym.replace('USDT', ''), price, pDay, pWeek, pMonth, color: COMP_COLORS[sym] || '#888' });
+    const pWeek  = closes.length >= 8   ? ((last / closes[closes.length - 8])   - 1) * 100 : null;
+    const pMonth = closes.length >= 31  ? ((last / closes[closes.length - 31])  - 1) * 100 : null;
+    const pYear  = closes.length >= 2   ? ((last / closes[0])                   - 1) * 100 : null;
+    rows.push({ sym, name: sym.replace('USDT',''), price, pDay, pWeek, pMonth, pYear, color: COMP_COLORS[sym]||'#888' });
   }
 
-  const sk = period === '1w' ? 'pWeek' : 'pMonth';
+  const sortMap = { '1w': 'pWeek', '1m': 'pMonth', '1y': 'pYear' };
+  const sk = sortMap[period] || 'pMonth';
   rows.sort((a, b) => (b[sk] ?? -Infinity) - (a[sk] ?? -Infinity));
 
-  const fp = p => p == null
-    ? '<td class="comp-na">—</td>'
+  const fp = p => p == null ? '<td class="comp-na">—</td>'
     : `<td class="comp-pc ${p >= 0 ? 'pos' : 'neg'}">${p >= 0 ? '+' : ''}${p.toFixed(2)}%</td>`;
 
-  const fv = p => {
-    if (p >= 10000) return p.toLocaleString('en', { maximumFractionDigits: 0 });
-    if (p >= 100)   return p.toFixed(2);
-    if (p >= 1)     return p.toFixed(4);
-    return p.toPrecision(4);
-  };
+  const fv = p => p >= 10000 ? p.toLocaleString('en',{maximumFractionDigits:0}) : p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toPrecision(4);
 
   tbody.innerHTML = rows.map((r, i) => `<tr class="${i % 2 ? 'alt' : ''}">
-    <td>
-      <div class="comp-asset-cell">
-        <span class="comp-sw" style="background:${r.color}"></span>
-        <span class="comp-nm">${r.name}</span>
-      </div>
-    </td>
+    <td><div class="comp-asset-cell"><span class="comp-sw" style="background:${r.color}"></span><span class="comp-nm">${r.name}</span></div></td>
     <td class="comp-price font-mono">$${fv(r.price)}</td>
-    ${fp(r.pDay)}
-    ${fp(r.pWeek)}
-    ${fp(r.pMonth)}
+    ${fp(r.pDay)}${fp(r.pWeek)}${fp(r.pMonth)}${fp(r.pYear)}
   </tr>`).join('');
 
-  // Highlight sort column header
-  ['thDay','thWeek','thMonth'].forEach(id => document.getElementById(id)?.classList.remove('sorted'));
-  document.getElementById(period === '1w' ? 'thWeek' : 'thMonth')?.classList.add('sorted');
+  if (thIds) {
+    [thIds.thDay,thIds.thWeek,thIds.thMonth,thIds.thYear].forEach(id => document.getElementById(id)?.classList.remove('sorted'));
+    const activeThId = sortMap[period] === 'pWeek' ? thIds.thWeek : sortMap[period] === 'pMonth' ? thIds.thMonth : thIds.thYear;
+    document.getElementById(activeThId)?.classList.add('sorted');
+  }
+}
+
+// ── Disabled bar (Global) ─────────────────────────────────
+function updateDisabledBar() {
+  const bar = document.getElementById('disabledBar');
+  if (!bar) return;
+  if (disabledGlobal.size === 0) { bar.innerHTML = ''; bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = `<span class="comp-dis-lbl">Ocultos:</span>` +
+    [...disabledGlobal].map(sym => {
+      const col = COMP_COLORS[sym] || '#888';
+      return `<span class="comp-dis-chip" data-sym="${sym}">
+        <span style="background:${col};width:6px;height:6px;border-radius:2px;display:inline-block;flex-shrink:0"></span>
+        ${sym.replace('USDT','')} <span class="comp-dis-x">×</span>
+      </span>`;
+    }).join('');
+  bar.querySelectorAll('.comp-dis-chip[data-sym]').forEach(chip => {
+    chip.addEventListener('click', () => { disabledGlobal.delete(chip.dataset.sym); renderGlobalView(); });
+  });
+}
+
+// ── Render Global view ────────────────────────────────────
+function renderGlobalView() {
+  if (!compData) return;
+  const all    = buildCompSeries(compData, COMP_ASSETS, compPeriod);
+  const active = all.filter(s => !disabledGlobal.has(s.sym));
+  drawCompChart(active, 'perfChart', 'compLoading');
+  drawCompLegend(all, disabledGlobal, 'compLegend', sym => {
+    disabledGlobal.has(sym) ? disabledGlobal.delete(sym) : disabledGlobal.add(sym);
+    renderGlobalView();
+  });
+  drawCompTable(compData, compPeriod, COMP_ASSETS.filter(s => !disabledGlobal.has(s)), 'compTbody',
+    { thDay:'thDay', thWeek:'thWeek', thMonth:'thMonth', thYear:'thYear' });
+  updateDisabledBar();
+}
+
+// ── Render AI view ────────────────────────────────────────
+function renderAIView() {
+  if (!compData) return;
+  const series = buildCompSeries(compData, AI_ASSETS, compPeriod);
+  drawCompChart(series, 'perfChartAI', 'compLoadingAI');
+  drawCompLegend(series, null, 'compLegendAI', null);
+  drawCompTable(compData, compPeriod, AI_ASSETS, 'compTbodyAI',
+    { thDay:'thDayAI', thWeek:'thWeekAI', thMonth:'thMonthAI', thYear:'thYearAI' });
+}
+
+// ── Active render dispatcher ──────────────────────────────
+function renderCompViews() {
+  if (compTab === 'global') renderGlobalView();
+  else renderAIView();
 }
 
 // ── Main update ───────────────────────────────────────────
-async function updateComparisons(period) {
+async function updateComparisons() {
   if (compBusy) return;
   compBusy = true;
-  const loadEl = document.getElementById('compLoading');
-  if (loadEl) loadEl.style.display = 'flex';
+  ['compLoading','compLoadingAI'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'flex'; });
   try {
     if (!compData) compData = await fetchCompData();
-    renderPerfChart(compData, period);
-    renderCompTable(compData, period);
+    renderGlobalView();
+    renderAIView();
   } finally { compBusy = false; }
 }
+
+// ── Tab buttons ───────────────────────────────────────────
+document.querySelectorAll('.comp-tab').forEach(tab => {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.comp-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+    compTab = this.dataset.tab;
+    document.getElementById('view-global').style.display = compTab === 'global' ? '' : 'none';
+    document.getElementById('view-ai').style.display     = compTab === 'ai'     ? '' : 'none';
+    if (compData) setTimeout(() => renderCompViews(), 50);
+  });
+});
 
 // ── Period buttons ────────────────────────────────────────
 document.querySelectorAll('.period-btn').forEach(btn => {
@@ -917,25 +950,20 @@ document.querySelectorAll('.period-btn').forEach(btn => {
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
     compPeriod = this.dataset.period;
-    if (compData) {
-      renderPerfChart(compData, compPeriod);
-      renderCompTable(compData, compPeriod);
-    }
+    if (compData) renderCompViews();
   });
 });
 
-// ── Resize handler ────────────────────────────────────────
+// ── Resize ────────────────────────────────────────────────
 let _compResizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(_compResizeTimer);
-  _compResizeTimer = setTimeout(() => {
-    if (compData) renderPerfChart(compData, compPeriod);
-  }, 160);
+  _compResizeTimer = setTimeout(() => { if (compData) renderCompViews(); }, 160);
 });
 
 // ── Boot ──────────────────────────────────────────────────
-updateComparisons('1w');
-setInterval(async () => { compData = null; await updateComparisons(compPeriod); }, 300_000);
+updateComparisons();
+setInterval(async () => { compData = null; await updateComparisons(); }, 300_000);
 
 /* ════════════════════════════════════════════════════════
    NOTICIAS — RSS Multi-Feed (CoinDesk · Cointelegraph · Decrypt)
