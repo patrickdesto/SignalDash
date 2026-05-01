@@ -10,13 +10,24 @@
   setInterval(tick, 1000);
 })();
 
-// ─── NAV ─────────────────────────────────────────────────
-document.querySelectorAll('.nav-item').forEach(item => {
+// ─── NAV / SECCIONES ─────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.page-section').forEach(s => {
+    s.classList.toggle('sec-hidden', s.id !== id);
+  });
+  if (id === 'sec-comparaciones' && typeof compData !== 'undefined' && compData) {
+    setTimeout(() => renderPerfChart(compData, compPeriod), 60);
+  }
+}
+
+document.querySelectorAll('.nav-item[data-section]').forEach(item => {
   item.addEventListener('click', function () {
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
     this.classList.add('active');
+    showSection(this.dataset.section);
   });
 });
+
 document.querySelectorAll('.filter-pill').forEach(pill => {
   pill.addEventListener('click', function () {
     document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
@@ -634,3 +645,378 @@ updateAllData();
 updatePrice();
 setInterval(updateAllData, 30_000);
 setInterval(updatePrice,   30_000);
+
+/* ════════════════════════════════════════════════════════
+   COMPARACIONES — Rendimiento Relativo Multi-Activo
+   ════════════════════════════════════════════════════════ */
+
+const COMP_ASSETS = [
+  'BTCUSDT','ETHUSDT','XRPUSDT','BNBUSDT','SOLUSDT','ADAUSDT',
+  'BCHUSDT','LINKUSDT','XLMUSDT','TONUSDT','AVAXUSDT','SUIUSDT',
+  'TAOUSDT','DOTUSDT','UNIUSDT','NEARUSDT','AAVEUSDT','ALGOUSDT',
+  'ENAUSDT','INKUSDT','RNDRUSDT','FETUSDT'
+];
+
+const COMP_COLORS = {
+  BTCUSDT: '#F7931A', ETHUSDT: '#8A92B2', XRPUSDT: '#00AAE4',
+  BNBUSDT: '#F0B90B', SOLUSDT: '#9945FF', ADAUSDT: '#0D86FF',
+  BCHUSDT: '#8DC351', LINKUSDT:'#2A5ADA', XLMUSDT: '#14B6E7',
+  TONUSDT: '#0098EA', AVAXUSDT:'#E84142', SUIUSDT: '#6FBCF0',
+  TAOUSDT: '#57B8B7', DOTUSDT: '#E6007A', UNIUSDT: '#FF007A',
+  NEARUSDT:'#00EC97', AAVEUSDT:'#B6509E', ALGOUSDT:'#00B4D8',
+  ENAUSDT: '#A6E22E', INKUSDT: '#FF6B35', RNDRUSDT:'#FF8C00',
+  FETUSDT: '#1EC9E8'
+};
+
+let compData   = null;
+let compPeriod = '1w';
+let compBusy   = false;
+
+// ── Data fetch ────────────────────────────────────────────
+async function fetchCompData() {
+  const out = {};
+  await Promise.allSettled(COMP_ASSETS.map(async sym => {
+    try {
+      const [kr, tr] = await Promise.all([
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=91`),
+        fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym}`)
+      ]);
+      if (kr.ok && tr.ok) out[sym] = { klines: await kr.json(), ticker: await tr.json() };
+    } catch {}
+  }));
+  return out;
+}
+
+// ── Nice Y-axis ticks ─────────────────────────────────────
+function compNiceTicks(min, max, n) {
+  const rng = max - min || 1;
+  const raw = rng / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const s   = mag * (raw / mag < 1.5 ? 1 : raw / mag < 3 ? 2 : raw / mag < 7 ? 5 : 10);
+  const ticks = [];
+  for (let v = Math.ceil(min / s) * s; v <= max + s * 0.001; v += s)
+    ticks.push(parseFloat(v.toFixed(8)));
+  return ticks;
+}
+
+// ── Chart render ──────────────────────────────────────────
+function renderPerfChart(data, period) {
+  const canvas = document.getElementById('perfChart');
+  const loadEl = document.getElementById('compLoading');
+  if (!canvas) return;
+  if (loadEl) loadEl.style.display = 'none';
+
+  const slices = { '1w': 8, '1m': 31, '3m': 91 };
+  const sliceN  = slices[period] || 31;
+
+  // Build normalized series (% change from first candle of slice)
+  const series = [];
+  for (const sym of Object.keys(data)) {
+    const klines = data[sym]?.klines;
+    if (!klines || klines.length < 2) continue;
+    const closes = klines.map(k => parseFloat(k[4]));
+    const ts     = klines.map(k => k[0]);
+    const sc     = closes.slice(-sliceN);
+    const st     = ts.slice(-sliceN);
+    if (sc.length < 2) continue;
+    const base = sc[0];
+    const vals = sc.map(c => ((c / base) - 1) * 100);
+    series.push({
+      sym,
+      color: COMP_COLORS[sym] || '#888',
+      name:  sym.replace('USDT', ''),
+      vals,  ts: st,
+      cur:   vals[vals.length - 1]
+    });
+  }
+  if (!series.length) return;
+
+  // Canvas sizing (high-DPI aware)
+  const dpr  = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W    = Math.max(Math.floor(rect.width), 300);
+  const H    = Math.max(Math.floor(rect.height), 300);
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { t: 20, b: 34, l: 58, r: 14 };
+  const cW  = W - pad.l - pad.r;
+  const cH  = H - pad.t - pad.b;
+
+  // Global min/max
+  let minV = Infinity, maxV = -Infinity;
+  for (const s of series) for (const v of s.vals) { if (v < minV) minV = v; if (v > maxV) maxV = v; }
+  const rng = maxV - minV || 1;
+  minV -= rng * 0.06;
+  maxV += rng * 0.06;
+
+  const xOf = (i, tot) => pad.l + (i / (tot - 1)) * cW;
+  const yOf = v => pad.t + cH - ((v - minV) / (maxV - minV)) * cH;
+
+  // Background
+  ctx.fillStyle = '#0b0e17';
+  ctx.fillRect(0, 0, W, H);
+
+  // Y grid lines + labels
+  const ticks = compNiceTicks(minV, maxV, 6);
+  ctx.font = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign = 'right';
+  ctx.setLineDash([3, 6]);
+  ctx.lineWidth = 1;
+  for (const t of ticks) {
+    const y = yOf(t);
+    if (y < pad.t - 4 || y > pad.t + cH + 4) continue;
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillText((t >= 0 ? '+' : '') + t.toFixed(0) + '%', pad.l - 5, y + 3.5);
+  }
+  ctx.setLineDash([]);
+
+  // Zero line (highlighted)
+  const y0 = yOf(0);
+  if (y0 >= pad.t && y0 <= pad.t + cH) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(W - pad.r, y0); ctx.stroke();
+  }
+
+  // X axis date labels
+  const refTs = series[0].ts;
+  const totPt = refTs.length;
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.textAlign = 'center';
+  ctx.font = '10px "JetBrains Mono",Consolas,monospace';
+  const lblN = Math.min(6, totPt - 1);
+  for (let li = 0; li <= lblN; li++) {
+    const di = Math.round((li / lblN) * (totPt - 1));
+    const x  = xOf(di, totPt);
+    const d  = new Date(refTs[di]);
+    ctx.fillText(d.toLocaleDateString('es', { month: 'short', day: 'numeric' }), x, H - 7);
+  }
+
+  // Axis borders
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t);
+  ctx.lineTo(pad.l, pad.t + cH);
+  ctx.lineTo(W - pad.r, pad.t + cH);
+  ctx.stroke();
+
+  // Draw lines — worst performers first so best render on top
+  const drawOrder = [...series].sort((a, b) => a.cur - b.cur);
+  for (const s of drawOrder) {
+    const tot = s.vals.length;
+    ctx.beginPath();
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth   = 1.5;
+    ctx.globalAlpha = 0.82;
+    for (let i = 0; i < tot; i++) {
+      const x = xOf(i, tot), y = yOf(s.vals[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // Terminal dot
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(xOf(tot - 1, tot), yOf(s.vals[tot - 1]), 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  renderCompLegend(series);
+}
+
+// ── Legend (right panel, sorted best→worst) ───────────────
+function renderCompLegend(series) {
+  const legEl = document.getElementById('compLegend');
+  if (!legEl) return;
+  const sorted = [...series].sort((a, b) => b.cur - a.cur);
+  legEl.innerHTML = sorted.map(s => `
+    <div class="comp-leg-item">
+      <span class="comp-leg-sw" style="background:${s.color}"></span>
+      <span class="comp-leg-nm">${s.name}</span>
+      <span class="comp-leg-pc ${s.cur >= 0 ? 'pos' : 'neg'}">${s.cur >= 0 ? '+' : ''}${s.cur.toFixed(2)}%</span>
+    </div>`).join('');
+}
+
+// ── Performance table ─────────────────────────────────────
+function renderCompTable(data, period) {
+  const tbody = document.getElementById('compTbody');
+  if (!tbody) return;
+
+  const rows = [];
+  for (const sym of Object.keys(data)) {
+    const { klines, ticker } = data[sym] || {};
+    if (!klines || klines.length < 2) continue;
+    const closes = klines.map(k => parseFloat(k[4]));
+    const last   = closes[closes.length - 1];
+    const price  = parseFloat(ticker.lastPrice);
+    const pDay   = parseFloat(ticker.priceChangePercent);
+    const pWeek  = closes.length >= 8  ? ((last / closes[closes.length - 8])  - 1) * 100 : null;
+    const pMonth = closes.length >= 31 ? ((last / closes[closes.length - 31]) - 1) * 100 : null;
+    rows.push({ sym, name: sym.replace('USDT', ''), price, pDay, pWeek, pMonth, color: COMP_COLORS[sym] || '#888' });
+  }
+
+  const sk = period === '1w' ? 'pWeek' : 'pMonth';
+  rows.sort((a, b) => (b[sk] ?? -Infinity) - (a[sk] ?? -Infinity));
+
+  const fp = p => p == null
+    ? '<td class="comp-na">—</td>'
+    : `<td class="comp-pc ${p >= 0 ? 'pos' : 'neg'}">${p >= 0 ? '+' : ''}${p.toFixed(2)}%</td>`;
+
+  const fv = p => {
+    if (p >= 10000) return p.toLocaleString('en', { maximumFractionDigits: 0 });
+    if (p >= 100)   return p.toFixed(2);
+    if (p >= 1)     return p.toFixed(4);
+    return p.toPrecision(4);
+  };
+
+  tbody.innerHTML = rows.map((r, i) => `<tr class="${i % 2 ? 'alt' : ''}">
+    <td>
+      <div class="comp-asset-cell">
+        <span class="comp-sw" style="background:${r.color}"></span>
+        <span class="comp-nm">${r.name}</span>
+      </div>
+    </td>
+    <td class="comp-price font-mono">$${fv(r.price)}</td>
+    ${fp(r.pDay)}
+    ${fp(r.pWeek)}
+    ${fp(r.pMonth)}
+  </tr>`).join('');
+
+  // Highlight sort column header
+  ['thDay','thWeek','thMonth'].forEach(id => document.getElementById(id)?.classList.remove('sorted'));
+  document.getElementById(period === '1w' ? 'thWeek' : 'thMonth')?.classList.add('sorted');
+}
+
+// ── Main update ───────────────────────────────────────────
+async function updateComparisons(period) {
+  if (compBusy) return;
+  compBusy = true;
+  const loadEl = document.getElementById('compLoading');
+  if (loadEl) loadEl.style.display = 'flex';
+  try {
+    if (!compData) compData = await fetchCompData();
+    renderPerfChart(compData, period);
+    renderCompTable(compData, period);
+  } finally { compBusy = false; }
+}
+
+// ── Period buttons ────────────────────────────────────────
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    compPeriod = this.dataset.period;
+    if (compData) {
+      renderPerfChart(compData, compPeriod);
+      renderCompTable(compData, compPeriod);
+    }
+  });
+});
+
+// ── Resize handler ────────────────────────────────────────
+let _compResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_compResizeTimer);
+  _compResizeTimer = setTimeout(() => {
+    if (compData) renderPerfChart(compData, compPeriod);
+  }, 160);
+});
+
+// ── Boot ──────────────────────────────────────────────────
+updateComparisons('1w');
+setInterval(async () => { compData = null; await updateComparisons(compPeriod); }, 300_000);
+
+/* ════════════════════════════════════════════════════════
+   NOTICIAS — RSS Multi-Feed (CoinDesk · Cointelegraph · Decrypt)
+   ════════════════════════════════════════════════════════ */
+
+const NEWS_FEEDS = [
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', name: 'CoinDesk',      color: '#F7931A' },
+  { url: 'https://cointelegraph.com/rss',                   name: 'Cointelegraph', color: '#3AB0FF' },
+  { url: 'https://decrypt.co/feed',                         name: 'Decrypt',       color: '#5CC8D6' }
+];
+const NEWS_PROXY = 'https://api.allorigins.win/raw?url=';
+let newsLoaded   = false;
+
+function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const t    = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
+async function fetchFeed(feed) {
+  try {
+    const res = await fetchWithTimeout(NEWS_PROXY + encodeURIComponent(feed.url), 9000);
+    if (!res.ok) return [];
+    const xml = new DOMParser().parseFromString(await res.text(), 'text/xml');
+    return Array.from(xml.querySelectorAll('item')).slice(0, 12).map(it => {
+      const linkEl = it.querySelector('link');
+      const link   = linkEl?.textContent?.trim()
+                  || linkEl?.getAttribute('href')
+                  || it.querySelector('guid')?.textContent?.trim() || '';
+      return {
+        title:  it.querySelector('title')?.textContent?.trim() || '',
+        link,
+        date:   new Date(it.querySelector('pubDate')?.textContent?.trim() || ''),
+        source: feed.name,
+        color:  feed.color
+      };
+    }).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
+  } catch { return []; }
+}
+
+function newsTimeAgo(date) {
+  const m = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (m < 1)    return 'ahora';
+  if (m < 60)   return `hace ${m}m`;
+  if (m < 1440) return `hace ${Math.floor(m / 60)}h`;
+  return `hace ${Math.floor(m / 1440)}d`;
+}
+
+function renderNewsGrid(items) {
+  const grid  = document.getElementById('newsGrid');
+  const updEl = document.getElementById('newsUpdated');
+  if (!grid) return;
+
+  grid.innerHTML = items.map(n => `
+    <a class="news-card" href="${n.link}" target="_blank" rel="noopener noreferrer" style="border-top-color:${n.color}">
+      <span class="news-card__src" style="color:${n.color}">${n.source}</span>
+      <p class="news-card__title">${n.title}</p>
+      <div class="news-card__foot">
+        <span class="news-card__time">${newsTimeAgo(n.date)}</span>
+        <span class="news-card__arr">↗</span>
+      </div>
+    </a>`).join('');
+
+  if (updEl) updEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function updateNews() {
+  const grid = document.getElementById('newsGrid');
+
+  const settled = await Promise.allSettled(NEWS_FEEDS.map(fetchFeed));
+  const all     = settled.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+
+  if (all.length === 0) {
+    if (!newsLoaded && grid)
+      grid.innerHTML = '<div class="news-placeholder">No se pudieron cargar las noticias. Reintentando en 8 min…</div>';
+    return;
+  }
+
+  newsLoaded = true;
+  renderNewsGrid(all.sort((a, b) => b.date - a.date).slice(0, 6));
+}
+
+updateNews();
+setInterval(updateNews, 8 * 60 * 1000);

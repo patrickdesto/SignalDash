@@ -14,10 +14,10 @@
       <span class="header__logo-text">Signal<span class="accent">Dash</span></span>
     </div>
     <nav class="header__nav">
-      <span class="nav-item active">Dashboard</span>
-      <span class="nav-item">Alertas</span>
-      <span class="nav-item">Setups</span>
-      <span class="nav-item">Historial</span>
+      <span class="nav-item active" data-section="sec-dashboard">Dashboard</span>
+      <span class="nav-item" data-section="sec-comparaciones">Comparaciones</span>
+      <span class="nav-item" data-section="sec-noticias">Noticias</span>
+      <span class="nav-item" data-section="sec-alertas">Alertas</span>
     </nav>
     <div class="header__status">
       <span class="status-dot"></span>
@@ -25,6 +25,9 @@
       <div class="header__time" id="clock">--:--:--</div>
     </div>
   </header>
+
+  <!-- DASHBOARD -->
+  <div id="sec-dashboard" class="page-section">
 
   <!-- PAIR BAR -->
   <div class="pair-bar">
@@ -191,8 +194,10 @@
     </div>
   </section>
 
+  </div><!-- /sec-dashboard -->
+
   <!-- ALERTAS -->
-  <section class="alerts-section">
+  <section class="alerts-section page-section sec-hidden" id="sec-alertas">
     <div class="alerts-header">
       <span class="alerts-title">◉ Alertas RSI</span>
       <div class="alerts-filters">
@@ -209,6 +214,59 @@
         <p>Sin alertas activas</p>
         <p class="alert-empty__sub">Las señales aparecerán cuando el RSI entre en zona extrema o de gatillo</p>
       </div>
+    </div>
+  </section>
+
+  <!-- NOTICIAS -->
+  <section class="news-section page-section sec-hidden" id="sec-noticias">
+    <div class="news-hdr">
+      <span class="news-hdr__title">◈ Noticias · Crypto News</span>
+      <div class="news-hdr__meta">
+        <span class="news-badge" style="color:#F7931A">CoinDesk</span>
+        <span class="news-sep">·</span>
+        <span class="news-badge" style="color:#3AB0FF">Cointelegraph</span>
+        <span class="news-sep">·</span>
+        <span class="news-badge" style="color:#5CC8D6">Decrypt</span>
+        <span class="news-upd" id="newsUpdated"></span>
+      </div>
+    </div>
+    <div class="news-grid" id="newsGrid">
+      <div class="news-placeholder">Cargando noticias…</div>
+    </div>
+  </section>
+
+  <!-- COMPARACIONES -->
+  <section class="comp-section page-section sec-hidden" id="sec-comparaciones">
+    <div class="comp-hdr">
+      <span class="comp-hdr__title">◈ Comparaciones · Rendimiento Relativo · Base 100</span>
+      <div class="period-sel">
+        <button class="period-btn active" data-period="1w">1 Semana</button>
+        <button class="period-btn" data-period="1m">1 Mes</button>
+        <button class="period-btn" data-period="3m">3 Meses</button>
+      </div>
+    </div>
+
+    <div class="comp-chart-card">
+      <div class="comp-chart-wrap">
+        <canvas id="perfChart"></canvas>
+        <div class="comp-loading" id="compLoading">Cargando datos de mercado…</div>
+      </div>
+      <div class="comp-legend" id="compLegend"></div>
+    </div>
+
+    <div class="comp-table-card">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Activo</th>
+            <th>Precio</th>
+            <th id="thDay">% Día</th>
+            <th id="thWeek">% Semana</th>
+            <th id="thMonth">% Mes</th>
+          </tr>
+        </thead>
+        <tbody id="compTbody"></tbody>
+      </table>
     </div>
   </section>
 

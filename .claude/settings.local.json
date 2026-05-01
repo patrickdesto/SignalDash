@@ -4,7 +4,10 @@
       "Bash(npx *)",
       "Bash(node -e ' *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/)",
-      "Bash(start *)"
+      "Bash(start *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Destorel\\\\Desktop\\\\SignalDash\" -Recurse -Force)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)"
     ]
   }
 }
