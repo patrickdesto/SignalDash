@@ -429,14 +429,124 @@ function calcRSI(closes, period) {
   return 100 - 100 / (1 + avgGain / avgLoss);
 }
 
-// ─── Klines → RSI para un timeframe ───
-async function fetchRSI(tf) {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF_INTERVAL[tf]}&limit=100`;
+// ─── Klines crudos (250 velas) — suficiente para EMA 200 + RSI 14 ───
+async function fetchKlines(tf) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF_INTERVAL[tf]}&limit=250`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const data = await r.json();
-  const closes = data.map(k => parseFloat(k[4]));
-  return calcRSI(closes, RSI_PERIOD);
+  return data.map(k => parseFloat(k[4]));
+}
+
+// ─── EMA estándar con inicio SMA ───
+function calcEMA(closes, period) {
+  if (closes.length < period) return null;
+  const mult = 2 / (period + 1);
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < closes.length; i++) {
+    ema = closes[i] * mult + ema * (1 - mult);
+  }
+  return ema;
+}
+
+// ─── Estado de alertas EMA 100/200 por timeframe ───
+const emaAlertState = {
+  '15m': { e100AboveE200: null, inProximity: false },
+  '1h':  { e100AboveE200: null, inProximity: false },
+  '4h':  { e100AboveE200: null, inProximity: false },
+  '1d':  { e100AboveE200: null, inProximity: false },
+};
+
+// ─── Actualiza UI del panel EMA ───
+function updateEMAUI(tf, price, e20, e50, e100, e200) {
+  [[20, e20], [50, e50], [100, e100], [200, e200]].forEach(([p, val]) => {
+    if (val === null) return;
+    const valEl = document.getElementById(`ema-val-${tf}-${p}`);
+    const posEl = document.getElementById(`ema-pos-${tf}-${p}`);
+    if (valEl) valEl.textContent = '$' + val.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (posEl) {
+      const above = price >= val;
+      posEl.textContent = above ? '↑ encima' : '↓ debajo';
+      posEl.className   = `ema-row__pos ${above ? 'above' : 'below'}`;
+    }
+  });
+
+  const badgeEl = document.getElementById(`ema-badge-${tf}`);
+  if (!badgeEl || e100 === null || e200 === null) return;
+
+  const st         = emaAlertState[tf];
+  const pctDiff    = Math.abs(e100 - e200) / price;
+  const e100Above  = e100 > e200;
+  const crossed    = st.e100AboveE200 !== null && st.e100AboveE200 !== e100Above;
+  const inProx     = pctDiff < 0.005;
+
+  if (crossed) {
+    const dir = e100Above ? 'ALCISTA' : 'BAJISTA';
+    badgeEl.className   = 'ema-card__badge cross';
+    badgeEl.textContent = `⚡ CRUCE ${dir} — EMA 100 × EMA 200`;
+    pushEMAAlert(tf, 'cross', e100Above, e100, e200, price);
+  } else if (inProx) {
+    badgeEl.className   = 'ema-card__badge proximity';
+    badgeEl.textContent = `⚠ EMA 100 y 200 próximas · ${(pctDiff * 100).toFixed(2)}%`;
+    if (!st.inProximity) pushEMAAlert(tf, 'proximity', e100Above, e100, e200, price);
+  } else {
+    badgeEl.className   = 'ema-card__badge';
+    badgeEl.textContent = '';
+  }
+
+  st.e100AboveE200 = e100Above;
+  st.inProximity   = inProx;
+}
+
+// ─── Alerta EMA en el panel de alertas ───
+function pushEMAAlert(tf, type, e100Above, e100, e200, price) {
+  const body = document.getElementById('alertsBody');
+  if (!body) return;
+
+  const empty = body.querySelector('.alert-empty');
+  if (empty) empty.remove();
+
+  alertCount++;
+  document.getElementById('alertCount').textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+
+  const tfLabel  = tf.toUpperCase();
+  const timeStr  = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const priceStr = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+  let msg, tagText, accentCls, tagCls, pairColor;
+  if (type === 'cross') {
+    const dir  = e100Above ? 'ALCISTA' : 'BAJISTA';
+    msg        = `Cruce ${dir} de EMA 100 × EMA 200 en ${tfLabel} — precio: $${priceStr}`;
+    tagText    = `⚡ CRUCE ${dir}`;
+    accentCls  = e100Above ? 'a-green' : 'a-red';
+    tagCls     = e100Above ? 'green'   : 'red';
+    pairColor  = e100Above ? '#22c55e' : '#ef4444';
+  } else {
+    const pct  = (Math.abs(e100 - e200) / price * 100).toFixed(2);
+    msg        = `EMA 100 y EMA 200 a ${pct}% de diferencia en ${tfLabel} — posible cruce inminente`;
+    tagText    = '⚠ PROXIMIDAD';
+    accentCls  = 'a-orange';
+    tagCls     = 'orange';
+    pairColor  = '#f97316';
+  }
+
+  const card = document.createElement('div');
+  card.className = `alert-card ${accentCls}`;
+  card.innerHTML = `
+    <div class="alert-card__type">EMA · ${tfLabel}</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="alert-card__pair" style="color:${pairColor}">BTC/USDT · ${tfLabel}</span>
+      <span class="alert-card__msg">${msg}</span>
+    </div>
+    <div class="alert-card__meta">
+      <span class="alert-tag ${tagCls}">${tagText}</span>
+      <span class="alert-time">${timeStr}</span>
+    </div>
+  `;
+
+  body.insertBefore(card, body.firstChild);
+  const cards = body.querySelectorAll('.alert-card');
+  if (cards.length > 12) cards[cards.length - 1].remove();
 }
 
 // ─── Ticker 24h → precio + cambio % ───
@@ -454,18 +564,32 @@ function setStatus(ok) {
   if (text) text.textContent = ok ? 'En vivo · Binance' : 'Error conexión';
 }
 
-// ─── Actualiza los 4 timeframes en paralelo ───
-async function updateAllRSI() {
-  const tfs = ['15m', '1h', '4h', '1d'];
-  const results = await Promise.allSettled(tfs.map(fetchRSI));
+// ─── Actualiza RSI + EMAs para los 4 timeframes en paralelo ───
+async function updateAllData() {
+  const tfs     = ['15m', '1h', '4h', '1d'];
+  const results = await Promise.allSettled(tfs.map(async tf => {
+    const closes = await fetchKlines(tf);
+    return {
+      tf,
+      rsi:   calcRSI(closes, RSI_PERIOD),
+      e20:   calcEMA(closes, 20),
+      e50:   calcEMA(closes, 50),
+      e100:  calcEMA(closes, 100),
+      e200:  calcEMA(closes, 200),
+      price: closes[closes.length - 1],
+    };
+  }));
+
   let anyOk = false;
-  results.forEach((res, i) => {
-    if (res.status === 'fulfilled' && res.value !== null) {
-      const tf = tfs[i];
+  results.forEach(res => {
+    if (res.status !== 'fulfilled') return;
+    const { tf, rsi, e20, e50, e100, e200, price } = res.value;
+    if (rsi !== null) {
       prevRsi[tf] = targets[tf];
-      targets[tf] = Math.max(3, Math.min(97, res.value));
+      targets[tf] = Math.max(3, Math.min(97, rsi));
       anyOk = true;
     }
+    updateEMAUI(tf, price, e20, e50, e100, e200);
   });
   setStatus(anyOk);
 }
@@ -506,7 +630,7 @@ rafLoop();
 });
 
 // Primera carga inmediata, luego cada 30 segundos
-updateAllRSI();
+updateAllData();
 updatePrice();
-setInterval(updateAllRSI, 30_000);
-setInterval(updatePrice,  30_000);
+setInterval(updateAllData, 30_000);
+setInterval(updatePrice,   30_000);
