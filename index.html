@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignalDash</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="header__logo">
+      <span class="header__logo-icon">◈</span>
+      <span class="header__logo-text">Signal<span class="accent">Dash</span></span>
+    </div>
+    <nav class="header__nav">
+      <span class="nav-item active">Dashboard</span>
+      <span class="nav-item">Alertas</span>
+      <span class="nav-item">Setups</span>
+      <span class="nav-item">Historial</span>
+    </nav>
+    <div class="header__status">
+      <span class="status-dot"></span>
+      <span class="status-text">En vivo</span>
+      <div class="header__time" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- PAIR BAR -->
+  <div class="pair-bar">
+    <div class="pair-bar__left">
+      <span class="pair-badge">BTC/USDT</span>
+      <span class="pair-price font-mono" id="pairPrice">—</span>
+      <span class="pair-change neutral" id="pairChange">—%</span>
+    </div>
+    <div class="pair-bar__center">
+      <span class="pair-bar__label">RSI · Período 14 · Multi-timeframe</span>
+    </div>
+    <div class="pair-bar__right">
+      <div class="zone-legend">
+        <span class="legend-dot" style="background:#38bdf8"></span><span class="legend-txt">Sobreventa &lt;26</span>
+        <span class="legend-dot" style="background:#22c55e"></span><span class="legend-txt">Ejecución 40–60</span>
+        <span class="legend-dot" style="background:#ef4444"></span><span class="legend-txt">Sobrecompra ≥74</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RSI GAUGES -->
+  <section class="rsi-section">
+    <div class="gauges-grid">
+
+      <div class="gauge-card" id="card-15m">
+        <div class="gauge-tf-badge">15M</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-15m" aria-label="RSI 15 minutos"></svg>
+        </div>
+        <div class="gauge-value font-mono" id="val-15m">—</div>
+        <div class="gauge-zone-label" id="lbl-15m">Sin datos</div>
+        <div class="gauge-delta" id="delta-15m"></div>
+      </div>
+
+      <div class="gauge-card" id="card-1h">
+        <div class="gauge-tf-badge">1H</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-1h" aria-label="RSI 1 hora"></svg>
+        </div>
+        <div class="gauge-value font-mono" id="val-1h">—</div>
+        <div class="gauge-zone-label" id="lbl-1h">Sin datos</div>
+        <div class="gauge-delta" id="delta-1h"></div>
+      </div>
+
+      <div class="gauge-card" id="card-4h">
+        <div class="gauge-tf-badge">4H</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-4h" aria-label="RSI 4 horas"></svg>
+        </div>
+        <div class="gauge-value font-mono" id="val-4h">—</div>
+        <div class="gauge-zone-label" id="lbl-4h">Sin datos</div>
+        <div class="gauge-delta" id="delta-4h"></div>
+      </div>
+
+      <div class="gauge-card" id="card-1d">
+        <div class="gauge-tf-badge">1D</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-1d" aria-label="RSI 1 día"></svg>
+        </div>
+        <div class="gauge-value font-mono" id="val-1d">—</div>
+        <div class="gauge-zone-label" id="lbl-1d">Sin datos</div>
+        <div class="gauge-delta" id="delta-1d"></div>
+      </div>
+
+    </div>
+
+    <!-- RESUMEN MULTI-TF -->
+    <div class="rsi-summary">
+      <div class="summary-header">
+        <span>TF</span>
+        <span>RSI</span>
+        <span>Zona</span>
+        <span>Señal operativa</span>
+        <span>Estado</span>
+      </div>
+      <div class="summary-row" id="srow-15m">
+        <span class="srow-tf">15M</span>
+        <span class="srow-rsi font-mono" id="srsi-15m">—</span>
+        <span class="srow-zone" id="szone-15m">—</span>
+        <span class="srow-signal" id="ssig-15m">—</span>
+        <span class="srow-bar"><span class="srow-bar-fill" id="sbar-15m"></span></span>
+      </div>
+      <div class="summary-row" id="srow-1h">
+        <span class="srow-tf">1H</span>
+        <span class="srow-rsi font-mono" id="srsi-1h">—</span>
+        <span class="srow-zone" id="szone-1h">—</span>
+        <span class="srow-signal" id="ssig-1h">—</span>
+        <span class="srow-bar"><span class="srow-bar-fill" id="sbar-1h"></span></span>
+      </div>
+      <div class="summary-row" id="srow-4h">
+        <span class="srow-tf">4H</span>
+        <span class="srow-rsi font-mono" id="srsi-4h">—</span>
+        <span class="srow-zone" id="szone-4h">—</span>
+        <span class="srow-signal" id="ssig-4h">—</span>
+        <span class="srow-bar"><span class="srow-bar-fill" id="sbar-4h"></span></span>
+      </div>
+      <div class="summary-row" id="srow-1d">
+        <span class="srow-tf">1D</span>
+        <span class="srow-rsi font-mono" id="srsi-1d">—</span>
+        <span class="srow-zone" id="szone-1d">—</span>
+        <span class="srow-signal" id="ssig-1d">—</span>
+        <span class="srow-bar"><span class="srow-bar-fill" id="sbar-1d"></span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALERTAS -->
+  <section class="alerts-section">
+    <div class="alerts-header">
+      <span class="alerts-title">◉ Alertas RSI</span>
+      <div class="alerts-filters">
+        <span class="filter-pill active">Todas</span>
+        <span class="filter-pill">Sobreventa</span>
+        <span class="filter-pill">Ejecución</span>
+        <span class="filter-pill">Sobrecompra</span>
+      </div>
+      <span class="alerts-count" id="alertCount">0 alertas</span>
+    </div>
+    <div class="alerts-body" id="alertsBody">
+      <div class="alert-empty">
+        <span class="alert-empty__icon">⚡</span>
+        <p>Sin alertas activas</p>
+        <p class="alert-empty__sub">Las señales aparecerán cuando el RSI entre en zona extrema o de gatillo</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
