@@ -303,6 +303,29 @@
 
   </section>
 
+  <!-- SIGNAL MODAL -->
+  <div id="signalModal" class="sig-overlay" style="display:none" role="dialog" aria-modal="true">
+    <div class="sig-modal" id="signalModalInner">
+      <button class="sig-close" id="signalModalClose" aria-label="Cerrar">×</button>
+      <div class="sig-badge" id="signalModalBadge"></div>
+      <h2 class="sig-title" id="signalModalTitle"></h2>
+      <div class="sig-rows">
+        <div class="sig-row">
+          <span class="sig-lbl">Timeframe</span>
+          <span class="sig-val" id="signalModalTF"></span>
+        </div>
+        <div class="sig-row">
+          <span class="sig-lbl">Precio</span>
+          <span class="sig-val font-mono" id="signalModalPrice"></span>
+        </div>
+        <div class="sig-row">
+          <span class="sig-lbl">RSI (14)</span>
+          <span class="sig-val font-mono" id="signalModalRSI"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

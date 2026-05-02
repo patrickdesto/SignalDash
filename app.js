@@ -560,6 +560,97 @@ function pushEMAAlert(tf, type, e100Above, e100, e200, price) {
   if (cards.length > 12) cards[cards.length - 1].remove();
 }
 
+/* ════════════════════════════════════════════════════════
+   PATRÓN DE SOBREEXTENSIÓN — 1H / 4H
+   ════════════════════════════════════════════════════════ */
+
+// Estado activo por clave tf_direction (en memoria, reset al recargar)
+const patternActive = {};
+
+function checkExtensionPattern(tf, rsi, price, e20, e50, e100, e200) {
+  if (!['1h', '4h'].includes(tf)) return;
+  if (rsi === null || e20 === null || e50 === null || e100 === null || e200 === null) return;
+
+  const inRange  = rsi >= 40 && rsi <= 60;
+  const isBull   = inRange && price > e20 && price < e50 && price < e100 && price < e200;
+  const isBear   = inRange && price < e20 && price > e50 && price > e100 && price > e200;
+
+  const today    = new Date().toISOString().slice(0, 10);
+  const seen     = JSON.parse(localStorage.getItem('sd_signals') || '{}');
+
+  const trigger  = (dir, active) => {
+    const key   = `${tf}_${dir}`;
+    const was   = patternActive[key];
+    patternActive[key] = active;
+    if (active && !was) {
+      const dayKey = `${key}_${today}`;
+      if (!seen[dayKey]) {
+        seen[dayKey] = true;
+        localStorage.setItem('sd_signals', JSON.stringify(seen));
+        showSignalModal(tf, dir, price, rsi);
+        pushPatternAlert(tf, dir, price, rsi);
+      }
+    }
+  };
+
+  trigger('alcista', isBull);
+  trigger('bajista', isBear);
+}
+
+function showSignalModal(tf, dir, price, rsi) {
+  const overlay = document.getElementById('signalModal');
+  const inner   = document.getElementById('signalModalInner');
+  if (!overlay || !inner) return;
+
+  const isAlc = dir === 'alcista';
+  inner.className = `sig-modal ${dir}`;
+  document.getElementById('signalModalBadge').textContent  = isAlc ? '▲ ALCISTA' : '▼ BAJISTA';
+  document.getElementById('signalModalTitle').textContent  = isAlc ? 'Señal Revisión Alcista' : 'Señal de Revisión Bajista';
+  document.getElementById('signalModalTF').textContent     = tf.toUpperCase();
+  document.getElementById('signalModalPrice').textContent  = '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  document.getElementById('signalModalRSI').textContent    = rsi.toFixed(1);
+  overlay.style.display = 'flex';
+}
+
+function pushPatternAlert(tf, dir, price, rsi) {
+  const body = document.getElementById('alertsBody');
+  if (!body) return;
+
+  const empty = body.querySelector('.alert-empty');
+  if (empty) empty.remove();
+
+  alertCount++;
+  document.getElementById('alertCount').textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+
+  const isAlc     = dir === 'alcista';
+  const tfLabel   = tf.toUpperCase();
+  const timeStr   = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const priceStr  = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const title     = isAlc ? 'Señal Revisión Alcista' : 'Señal de Revisión Bajista';
+  const accentCls = isAlc ? 'a-green' : 'a-red';
+  const tagCls    = isAlc ? 'green'   : 'red';
+  const tagText   = isAlc ? '▲ ALCISTA' : '▼ BAJISTA';
+  const clr       = isAlc ? '#3a8a5c'  : '#a04040';
+
+  const card = document.createElement('div');
+  card.className = `alert-card ${accentCls}`;
+  card.innerHTML = `
+    <div class="alert-card__type">PATRÓN · ${tfLabel}</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="alert-card__pair" style="color:${clr}">BTC/USDT · ${tfLabel}</span>
+      <span class="alert-card__msg">${title} — precio: $${priceStr} · RSI: ${rsi.toFixed(1)}</span>
+    </div>
+    <div class="alert-card__meta">
+      <span class="alert-tag ${tagCls}">${tagText}</span>
+      <span class="alert-time">${timeStr}</span>
+    </div>
+  `;
+
+  body.insertBefore(card, body.firstChild);
+  const cards = body.querySelectorAll('.alert-card');
+  if (cards.length > 12) cards[cards.length - 1].remove();
+}
+
 // ─── Ticker 24h → precio + cambio % ───
 async function fetchTicker() {
   const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${SYMBOL}`);
@@ -601,6 +692,7 @@ async function updateAllData() {
       anyOk = true;
     }
     updateEMAUI(tf, price, e20, e50, e100, e200);
+    checkExtensionPattern(tf, rsi, price, e20, e50, e100, e200);
   });
   setStatus(anyOk);
 }
@@ -639,6 +731,15 @@ rafLoop();
   prevZones[tf] = getZone(50).label;
   applyGaugeUI(tf, 50);
 });
+
+// Modal de señal — cerrar con botón o clic en overlay
+(function () {
+  const overlay = document.getElementById('signalModal');
+  const btn     = document.getElementById('signalModalClose');
+  if (!overlay) return;
+  btn?.addEventListener('click',  () => { overlay.style.display = 'none'; });
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
+})();
 
 // Primera carga inmediata, luego cada 30 segundos
 updateAllData();

@@ -1022,3 +1022,101 @@ body {
   .gauge-value { font-size: 1.6rem; }
   .ema-leg-lbl { display: none; }
 }
+
+/* ════════════════════ SIGNAL MODAL ════════════════════ */
+.sig-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.70);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: sig-fade-in 0.18s ease;
+}
+@keyframes sig-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sig-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 28px 28px 24px;
+  width: 340px;
+  max-width: 92vw;
+  position: relative;
+  box-shadow: 0 12px 56px rgba(0,0,0,0.75);
+  animation: sig-slide-in 0.2s ease;
+}
+@keyframes sig-slide-in {
+  from { transform: translateY(-12px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.sig-modal.alcista { border-top: 3px solid var(--green); }
+.sig-modal.bajista { border-top: 3px solid var(--red); }
+
+.sig-close {
+  position: absolute;
+  top: 11px;
+  right: 13px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.sig-close:hover { color: var(--text-primary); background: var(--bg-card-alt); }
+
+.sig-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+.sig-modal.alcista .sig-badge { color: var(--green); background: var(--green-dim); }
+.sig-modal.bajista .sig-badge { color: var(--red);   background: var(--red-dim); }
+
+.sig-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  padding-right: 20px;
+  line-height: 1.3;
+}
+.sig-modal.alcista .sig-title { color: var(--green); }
+.sig-modal.bajista .sig-title { color: var(--red); }
+
+.sig-rows { display: flex; flex-direction: column; gap: 0; }
+
+.sig-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sig-row:last-child { border-bottom: none; }
+
+.sig-lbl {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+.sig-val {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
