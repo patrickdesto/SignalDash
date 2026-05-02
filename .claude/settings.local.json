@@ -7,7 +7,11 @@
       "Bash(start *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Destorel\\\\Desktop\\\\SignalDash\" -Recurse -Force)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(node --check app.js)",
+      "Bash(node *)"
     ]
   }
 }

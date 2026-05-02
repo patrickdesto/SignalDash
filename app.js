@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   SIGNALDASH — app.js  · RSI Multi-Timeframe Gauges
+   SIGNALDASH — app.js  · Multi-Asset RSI/EMA Dashboard
    ═══════════════════════════════════════════════════════ */
 
 // ─── RELOJ ───────────────────────────────────────────────
@@ -36,16 +36,80 @@ document.querySelectorAll('.filter-pill').forEach(pill => {
 });
 
 /* ══════════════════════════════════════════════════════════
+   ASSET METADATA
+   ══════════════════════════════════════════════════════════ */
+
+const ASSET_NAMES = {
+  BTCUSDT:  'Bitcoin',      ETHUSDT:  'Ethereum',    XRPUSDT:  'XRP',
+  BNBUSDT:  'BNB',          SOLUSDT:  'Solana',      ADAUSDT:  'Cardano',
+  BCHUSDT:  'Bitcoin Cash', LINKUSDT: 'Chainlink',   XLMUSDT:  'Stellar',
+  TONUSDT:  'Toncoin',      AVAXUSDT: 'Avalanche',   SUIUSDT:  'Sui',
+  TAOUSDT:  'Bittensor',    DOTUSDT:  'Polkadot',    UNIUSDT:  'Uniswap',
+  NEARUSDT: 'NEAR Protocol',AAVEUSDT: 'Aave',        ALGOUSDT: 'Algorand',
+  ENAUSDT:  'Ethena',       INJUSDT:  'Injective',   RNDRUSDT: 'Render',
+  FETUSDT:  'Fetch.ai'
+};
+
+const CMC_RANKS = {
+  BTCUSDT:  1,  ETHUSDT:  2,  XRPUSDT:  3,  BNBUSDT:  4,
+  SOLUSDT:  5,  XLMUSDT:  6,  TONUSDT:  7,  ADAUSDT:  8,
+  AVAXUSDT: 11, SUIUSDT:  13, DOTUSDT:  16, LINKUSDT: 15,
+  NEARUSDT: 18, AAVEUSDT: 22, UNIUSDT:  20, INJUSDT:  25,
+  ALGOUSDT: 44, BCHUSDT:  17, TAOUSDT:  19, FETUSDT:  30,
+  ENAUSDT:  33, RNDRUSDT: 38
+};
+
+const ASSET_CATS = {
+  BTCUSDT:  { cat: 'PoW',      cls: 'cat-pow'   },
+  ETHUSDT:  { cat: 'L1',       cls: 'cat-l1'    },
+  XRPUSDT:  { cat: 'Pagos',    cls: 'cat-pay'   },
+  BNBUSDT:  { cat: 'Exchange', cls: 'cat-exc'   },
+  SOLUSDT:  { cat: 'L1',       cls: 'cat-l1'    },
+  ADAUSDT:  { cat: 'L1',       cls: 'cat-l1'    },
+  BCHUSDT:  { cat: 'PoW',      cls: 'cat-pow'   },
+  LINKUSDT: { cat: 'Oracle',   cls: 'cat-oracle' },
+  XLMUSDT:  { cat: 'Pagos',    cls: 'cat-pay'   },
+  TONUSDT:  { cat: 'L1',       cls: 'cat-l1'    },
+  AVAXUSDT: { cat: 'L1',       cls: 'cat-l1'    },
+  SUIUSDT:  { cat: 'L1',       cls: 'cat-l1'    },
+  TAOUSDT:  { cat: 'AI',       cls: 'cat-ai'    },
+  DOTUSDT:  { cat: 'L0',       cls: 'cat-l0'    },
+  UNIUSDT:  { cat: 'DeFi',     cls: 'cat-defi'  },
+  NEARUSDT: { cat: 'AI / L1',  cls: 'cat-ai'    },
+  AAVEUSDT: { cat: 'DeFi',     cls: 'cat-defi'  },
+  ALGOUSDT: { cat: 'L1',       cls: 'cat-l1'    },
+  ENAUSDT:  { cat: 'DeFi',     cls: 'cat-defi'  },
+  INJUSDT:  { cat: 'DeFi / L1',cls: 'cat-defi'  },
+  RNDRUSDT: { cat: 'AI',       cls: 'cat-ai'    },
+  FETUSDT:  { cat: 'AI',       cls: 'cat-ai'    },
+};
+
+const COMP_ASSETS = [
+  'BTCUSDT','ETHUSDT','XRPUSDT','BNBUSDT','SOLUSDT','ADAUSDT',
+  'BCHUSDT','LINKUSDT','XLMUSDT','TONUSDT','AVAXUSDT','SUIUSDT',
+  'TAOUSDT','DOTUSDT','UNIUSDT','NEARUSDT','AAVEUSDT','ALGOUSDT',
+  'ENAUSDT','INJUSDT','RNDRUSDT','FETUSDT'
+];
+const AI_ASSETS = ['TAOUSDT','FETUSDT','RNDRUSDT','NEARUSDT','INJUSDT'];
+
+const COMP_COLORS = {
+  BTCUSDT:  '#d4954a', ETHUSDT:  '#7a85c0', XRPUSDT:  '#3a9acd',
+  BNBUSDT:  '#c8a030', SOLUSDT:  '#8a50d8', ADAUSDT:  '#3878c8',
+  BCHUSDT:  '#70a040', LINKUSDT: '#3060b8', XLMUSDT:  '#2090c0',
+  TONUSDT:  '#2088d8', AVAXUSDT: '#c04040', SUIUSDT:  '#4a90c8',
+  TAOUSDT:  '#30a090', DOTUSDT:  '#b04880', UNIUSDT:  '#b04870',
+  NEARUSDT: '#24906a', AAVEUSDT: '#7850a0', ALGOUSDT: '#2898c8',
+  ENAUSDT:  '#90a838', INJUSDT:  '#2098c8', RNDRUSDT: '#d07830',
+  FETUSDT:  '#22a8c8'
+};
+
+/* ══════════════════════════════════════════════════════════
    GAUGE ENGINE
    ══════════════════════════════════════════════════════════ */
 
-const CX = 100, CY = 108;   // arc center (bottom-center of viewBox 200×115)
-const R_OUT = 88;            // outer radius
-const R_IN  = 66;            // inner radius
-const R_NDL = 80;            // needle tip radius
-const R_NDL_BASE = 12;       // needle tail stub radius (opposite side)
+const CX = 100, CY = 108;
+const R_OUT = 88, R_IN = 66, R_NDL = 80, R_NDL_BASE = 12;
 
-// SVG namespace helper
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function el(tag, attrs) {
   const e = document.createElementNS(SVG_NS, tag);
@@ -54,18 +118,12 @@ function el(tag, attrs) {
 }
 function f(n) { return n.toFixed(2); }
 
-// Polar → Cartesian (y-flipped for SVG, 0°=right, 90°=up, 180°=left)
 function p2c(cx, cy, r, deg) {
   const rad = deg * Math.PI / 180;
   return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
 }
+function rsiAngle(rsi) { return 180 - (Math.max(0, Math.min(100, rsi)) / 100) * 180; }
 
-// RSI value → angle in degrees (RSI 0 → 180°/left, RSI 100 → 0°/right)
-function rsiAngle(rsi) {
-  return 180 - (Math.max(0, Math.min(100, rsi)) / 100) * 180;
-}
-
-// Draw a donut arc segment from angle a1 to a2 (both in degrees, a1 > a2 for CCW sweep)
 function donutArc(ro, ri, a1, a2) {
   const diff = Math.abs(a1 - a2);
   if (diff < 0.1) return '';
@@ -81,21 +139,20 @@ function donutArc(ro, ri, a1, a2) {
   ].join(' ');
 }
 
-/* ─── Color gradient stops (RSI 0→100) ─── */
 const COLOR_STOPS = [
-  { rsi: 0,   hex: '#1a3f5c' },
-  { rsi: 20,  hex: '#2d6e96' },
-  { rsi: 26,  hex: '#2d6e96' },
-  { rsi: 33,  hex: '#4a6278' },
-  { rsi: 40,  hex: '#384858' },
-  { rsi: 47,  hex: '#2a5e42' },
-  { rsi: 50,  hex: '#3a8a5c' },
-  { rsi: 53,  hex: '#2a5e42' },
-  { rsi: 60,  hex: '#384858' },
-  { rsi: 67,  hex: '#6a3838' },
-  { rsi: 74,  hex: '#a04040' },
-  { rsi: 87,  hex: '#a04040' },
-  { rsi: 100, hex: '#6a2020' },
+  { rsi: 0,   hex: '#0a2a4a' },
+  { rsi: 20,  hex: '#1d6090' },
+  { rsi: 26,  hex: '#1d9bf0' },
+  { rsi: 33,  hex: '#3a6070' },
+  { rsi: 40,  hex: '#2a3d52' },
+  { rsi: 47,  hex: '#0d5c3a' },
+  { rsi: 50,  hex: '#16c784' },
+  { rsi: 53,  hex: '#0d5c3a' },
+  { rsi: 60,  hex: '#2a3d52' },
+  { rsi: 67,  hex: '#5a1a1a' },
+  { rsi: 74,  hex: '#ea3943' },
+  { rsi: 87,  hex: '#c02030' },
+  { rsi: 100, hex: '#7a1020' },
 ];
 
 function hexToRgb(h) {
@@ -118,22 +175,20 @@ function getRSIColor(rsi) {
   return COLOR_STOPS[COLOR_STOPS.length - 1].hex;
 }
 
-/* ─── Zone info (label, signal) ─── */
 function getZone(rsi) {
-  if (rsi < 26)           return { label: 'SOBREVENTA',  signal: '⬇ Buscar largo',    cls: 'a-blue',   bar: '#2d6e96' };
-  if (rsi < 40)           return { label: 'TRANSICIÓN',  signal: '– Esperar señal',   cls: 'a-orange', bar: '#4a5c6e' };
-  if (rsi <= 60)          return { label: 'EJECUCIÓN',   signal: '✓ Zona de gatillo', cls: 'a-green',  bar: '#3a8a5c' };
-  if (rsi < 74)           return { label: 'TRANSICIÓN',  signal: '– Esperar señal',   cls: 'a-orange', bar: '#4a5c6e' };
-  return                         { label: 'SOBRECOMPRA', signal: '⬆ Buscar corto',    cls: 'a-red',    bar: '#a04040' };
+  if (rsi < 26)  return { label: 'SOBREVENTA',  signal: '⬇ Buscar largo',    cls: 'a-blue',   bar: '#1d9bf0' };
+  if (rsi < 40)  return { label: 'TRANSICIÓN',  signal: '– Esperar señal',   cls: 'a-orange', bar: '#4a5c6e' };
+  if (rsi <= 60) return { label: 'EJECUCIÓN',   signal: '✓ Zona de gatillo', cls: 'a-green',  bar: '#16c784' };
+  if (rsi < 74)  return { label: 'TRANSICIÓN',  signal: '– Esperar señal',   cls: 'a-orange', bar: '#4a5c6e' };
+  return                 { label: 'SOBRECOMPRA', signal: '⬆ Buscar corto',   cls: 'a-red',    bar: '#ea3943' };
 }
 
-/* ─── Static gauge background (zones + ticks + labels) ─── */
 const ZONE_SEGS = [
-  { rsi0: 0,  rsi1: 26,  color: '#2d6e96', opacity: 0.42 },
-  { rsi0: 26, rsi1: 40,  color: '#384858', opacity: 0.18 },
-  { rsi0: 40, rsi1: 60,  color: '#3a8a5c', opacity: 0.42 },
-  { rsi0: 60, rsi1: 74,  color: '#384858', opacity: 0.18 },
-  { rsi0: 74, rsi1: 100, color: '#a04040', opacity: 0.42 },
+  { rsi0: 0,  rsi1: 26,  color: '#1d9bf0', opacity: 0.35 },
+  { rsi0: 26, rsi1: 40,  color: '#2a3d52', opacity: 0.18 },
+  { rsi0: 40, rsi1: 60,  color: '#16c784', opacity: 0.35 },
+  { rsi0: 60, rsi1: 74,  color: '#2a3d52', opacity: 0.18 },
+  { rsi0: 74, rsi1: 100, color: '#ea3943', opacity: 0.35 },
 ];
 
 const TICK_RSIS  = [0, 26, 40, 50, 60, 74, 100];
@@ -144,7 +199,6 @@ function buildGauge(id) {
   if (!svg) return;
   svg.innerHTML = '';
 
-  // — Defs: glow filter —
   const defs = el('defs');
   defs.innerHTML = `
     <filter id="glow-${id}" x="-60%" y="-60%" width="220%" height="220%">
@@ -158,153 +212,100 @@ function buildGauge(id) {
   `;
   svg.appendChild(defs);
 
-  // — Dark background track —
-  const bg = el('path', {
+  svg.appendChild(el('path', {
     d: donutArc(R_OUT + 2, R_IN - 2, 180, 0),
-    fill: '#0b0d14',
-    stroke: '#1a1f30',
-    'stroke-width': '1'
-  });
-  svg.appendChild(bg);
+    fill: '#0a0f1a', stroke: '#1e2d3e', 'stroke-width': '1'
+  }));
 
-  // — Zone colored segments —
   ZONE_SEGS.forEach(z => {
     const a1 = rsiAngle(z.rsi0), a2 = rsiAngle(z.rsi1);
-    const seg = el('path', {
-      d: donutArc(R_OUT, R_IN, a1, a2),
-      fill: z.color,
-      opacity: z.opacity
-    });
-    svg.appendChild(seg);
+    svg.appendChild(el('path', { d: donutArc(R_OUT, R_IN, a1, a2), fill: z.color, opacity: z.opacity }));
   });
 
-  // — Zone boundary tick marks —
   TICK_RSIS.forEach(rsi => {
     const ang = rsiAngle(rsi);
     const outer = p2c(CX, CY, R_OUT + 4, ang);
     const inner = p2c(CX, CY, R_IN - 4, ang);
     svg.appendChild(el('line', {
-      x1: f(outer.x), y1: f(outer.y),
-      x2: f(inner.x), y2: f(inner.y),
-      stroke: rsi === 50 ? '#374151' : '#232840',
+      x1: f(outer.x), y1: f(outer.y), x2: f(inner.x), y2: f(inner.y),
+      stroke: rsi === 50 ? '#374151' : '#1e2d3e',
       'stroke-width': rsi === 50 ? '1.5' : '1'
     }));
   });
 
-  // — Labels inside arc —
   LABEL_RSIS.forEach(rsi => {
     const ang = rsiAngle(rsi);
     const lp = p2c(CX, CY, R_IN - 13, ang);
-    const colors = { 26: '#38bdf8', 40: '#64748b', 50: '#22c55e', 60: '#64748b', 74: '#ef4444' };
+    const colors = { 26: '#1d9bf0', 40: '#4a5c6e', 50: '#16c784', 60: '#4a5c6e', 74: '#ea3943' };
     const t = el('text', {
       x: f(lp.x), y: f(lp.y + 3.5),
       'text-anchor': 'middle',
       fill: colors[rsi] || '#4a5568',
-      'font-size': '8',
-      'font-family': 'monospace',
-      opacity: '0.85'
+      'font-size': '8', 'font-family': 'monospace', opacity: '0.85'
     });
     t.textContent = rsi;
     svg.appendChild(t);
   });
 
-  // — Needle glow (blurred, behind needle) —
   const ndlGlow = el('line', {
     class: 'g-needle-glow',
-    x1: f(CX), y1: f(CY),
-    x2: f(CX + R_NDL), y2: f(CY),
-    stroke: '#ffffff',
-    'stroke-width': '5',
-    'stroke-linecap': 'round',
-    opacity: '0.35',
-    filter: `url(#glow-${id})`
+    x1: f(CX), y1: f(CY), x2: f(CX + R_NDL), y2: f(CY),
+    stroke: '#ffffff', 'stroke-width': '5', 'stroke-linecap': 'round',
+    opacity: '0.3', filter: `url(#glow-${id})`
   });
   svg.appendChild(ndlGlow);
 
-  // — Needle —
   const ndl = el('line', {
     class: 'g-needle',
-    x1: f(p2c(CX, CY, R_NDL_BASE, 0).x), y1: f(CY),   // tail stub (will update x1 too)
+    x1: f(p2c(CX, CY, R_NDL_BASE, 0).x), y1: f(CY),
     x2: f(CX + R_NDL), y2: f(CY),
-    stroke: '#ffffff',
-    'stroke-width': '2.5',
-    'stroke-linecap': 'round',
+    stroke: '#ffffff', 'stroke-width': '2.5', 'stroke-linecap': 'round',
     filter: `url(#glow-sm-${id})`
   });
   svg.appendChild(ndl);
 
-  // — Center dot (on top of needle base) —
-  svg.appendChild(el('circle', {
-    class: 'g-center',
-    cx: CX, cy: CY, r: '6',
-    fill: '#12151f',
-    stroke: '#1a1f30',
-    'stroke-width': '2'
-  }));
-  svg.appendChild(el('circle', {
-    class: 'g-center-dot',
-    cx: CX, cy: CY, r: '4',
-    fill: '#475569'
-  }));
-
-  // — Active zone highlight arc (on top, updated dynamically) —
-  const activeArc = el('path', {
-    class: 'g-active-arc',
-    d: '',
-    fill: 'none',
-    stroke: '#ffffff',
-    'stroke-width': '0',
-    opacity: '0'
-  });
-  svg.appendChild(activeArc);
+  svg.appendChild(el('circle', { class: 'g-center',     cx: CX, cy: CY, r: '6',  fill: '#0d1421', stroke: '#1e2d3e', 'stroke-width': '2' }));
+  svg.appendChild(el('circle', { class: 'g-center-dot', cx: CX, cy: CY, r: '4',  fill: '#4a5c6e' }));
+  svg.appendChild(el('path',   { class: 'g-active-arc', d: '', fill: 'none', stroke: '#ffffff', 'stroke-width': '0', opacity: '0' }));
 }
 
-/* ─── Update needle + colors for a given RSI ─── */
 function renderNeedle(id, rsi, color) {
   const svg = document.getElementById(id);
   if (!svg) return;
-
-  const ang = rsiAngle(rsi);
+  const ang  = rsiAngle(rsi);
   const tip  = p2c(CX, CY, R_NDL, ang);
   const tail = p2c(CX, CY, R_NDL_BASE, (ang + 180) % 360);
-
-  const ndl = svg.querySelector('.g-needle');
+  const ndl  = svg.querySelector('.g-needle');
   if (ndl) {
     ndl.setAttribute('x1', f(tail.x)); ndl.setAttribute('y1', f(tail.y));
     ndl.setAttribute('x2', f(tip.x));  ndl.setAttribute('y2', f(tip.y));
     ndl.setAttribute('stroke', color);
   }
-
   const glow = svg.querySelector('.g-needle-glow');
   if (glow) {
     glow.setAttribute('x1', f(CX)); glow.setAttribute('y1', f(CY));
-    glow.setAttribute('x2', f(tip.x));  glow.setAttribute('y2', f(tip.y));
+    glow.setAttribute('x2', f(tip.x)); glow.setAttribute('y2', f(tip.y));
     glow.setAttribute('stroke', color);
   }
-
   const dot = svg.querySelector('.g-center-dot');
   if (dot) dot.setAttribute('fill', color);
 }
 
 /* ════════════════════════════════════════════════════════
-   ANIMATION LOOP — smooth lerp per timeframe
+   ANIMATION LOOP
    ════════════════════════════════════════════════════════ */
 
-// current (animated) vs target RSI per timeframe
-const animated = { '15m': 50, '1h': 50, '4h': 50, '1d': 50 };
+const animated  = { '15m': 50, '1h': 50, '4h': 50, '1d': 50 };
 const targets   = { '15m': 50, '1h': 50, '4h': 50, '1d': 50 };
 const prevZones = { '15m': null, '1h': null, '4h': null, '1d': null };
 const prevRsi   = { '15m': 50, '1h': 50, '4h': 50, '1d': 50 };
+let switchingAsset = false;
 
 function rafLoop() {
   requestAnimationFrame(rafLoop);
-  const TFS = ['15m', '1h', '4h', '1d'];
-  TFS.forEach(tf => {
-    const cur = animated[tf];
-    const tgt = targets[tf];
-    const diff = tgt - cur;
+  ['15m', '1h', '4h', '1d'].forEach(tf => {
+    const cur = animated[tf], tgt = targets[tf], diff = tgt - cur;
     if (Math.abs(diff) < 0.015) { animated[tf] = tgt; return; }
-    // springy lerp: faster when far, slower near target
     const speed = Math.min(0.055, Math.abs(diff) * 0.008 + 0.018);
     animated[tf] = cur + diff * speed;
     applyGaugeUI(tf, animated[tf]);
@@ -317,25 +318,21 @@ function applyGaugeUI(tf, rsi) {
 
   renderNeedle(`gauge-${tf}`, rsi, color);
 
-  // Value text
   const valEl = document.getElementById(`val-${tf}`);
   if (valEl) { valEl.textContent = rsi.toFixed(1); valEl.style.color = color; }
 
-  // Zone label
   const lblEl = document.getElementById(`lbl-${tf}`);
   if (lblEl) { lblEl.textContent = zone.label; lblEl.style.color = color; }
 
-  // Delta vs previous settled RSI
   const deltaEl = document.getElementById(`delta-${tf}`);
   if (deltaEl) {
     const d = rsi - prevRsi[tf];
     if (Math.abs(d) > 0.1) {
       deltaEl.textContent = (d >= 0 ? '▲ +' : '▼ ') + d.toFixed(1);
-      deltaEl.style.color = d >= 0 ? '#22c55e' : '#ef4444';
+      deltaEl.style.color = d >= 0 ? '#16c784' : '#ea3943';
     }
   }
 
-  // Card border + glow tint
   const card = document.getElementById(`card-${tf}`);
   if (card) {
     card.style.borderColor = color + '55';
@@ -343,19 +340,16 @@ function applyGaugeUI(tf, rsi) {
     card.style.boxShadow = `0 0 28px ${color}18, 0 2px 16px rgba(0,0,0,0.4)`;
   }
 
-  // Summary row
   const srsiEl  = document.getElementById(`srsi-${tf}`);
   const szoneEl = document.getElementById(`szone-${tf}`);
   const ssigEl  = document.getElementById(`ssig-${tf}`);
   const sbarEl  = document.getElementById(`sbar-${tf}`);
+  if (srsiEl)  { srsiEl.textContent  = rsi.toFixed(1); srsiEl.style.color = color; }
+  if (szoneEl) { szoneEl.textContent = zone.label;     szoneEl.style.color = color; }
+  if (ssigEl)  { ssigEl.textContent  = zone.signal;    ssigEl.style.color = color; }
+  if (sbarEl)  { sbarEl.style.width  = rsi + '%';      sbarEl.style.background = color; }
 
-  if (srsiEl) { srsiEl.textContent = rsi.toFixed(1); srsiEl.style.color = color; }
-  if (szoneEl){ szoneEl.textContent = zone.label; szoneEl.style.color = color; }
-  if (ssigEl) { ssigEl.textContent = zone.signal; ssigEl.style.color = color; }
-  if (sbarEl) { sbarEl.style.width = rsi + '%'; sbarEl.style.background = color; }
-
-  // Alert on zone entry (debounced to zone change)
-  if (prevZones[tf] !== null && prevZones[tf] !== zone.label) {
+  if (!switchingAsset && prevZones[tf] !== null && prevZones[tf] !== zone.label) {
     pushAlert(tf, rsi, zone, color);
   }
   prevZones[tf] = zone.label;
@@ -366,15 +360,26 @@ function applyGaugeUI(tf, rsi) {
    ════════════════════════════════════════════════════════ */
 let alertCount = 0;
 
+function getPairName(sym) {
+  sym = sym || SYMBOL;
+  return sym.replace('USDT', '') + '/USDT';
+}
+
+function updateMbarAlerts() {
+  const el = document.getElementById('mbarAlerts');
+  if (el) el.textContent = alertCount;
+}
+
 function pushAlert(tf, rsi, zone, color) {
   const body = document.getElementById('alertsBody');
   if (!body) return;
-
   const empty = body.querySelector('.alert-empty');
   if (empty) empty.remove();
 
   alertCount++;
-  document.getElementById('alertCount').textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  const countEl = document.getElementById('alertCount');
+  if (countEl) countEl.textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  updateMbarAlerts();
 
   const tfLabel = tf.toUpperCase();
   const msgs = {
@@ -383,18 +388,15 @@ function pushAlert(tf, rsi, zone, color) {
     'EJECUCIÓN':   `RSI en zona de gatillo (${rsi.toFixed(1)}) — condición de entrada activa`,
     'TRANSICIÓN':  `RSI salió de zona extrema (${rsi.toFixed(1)}) — monitorear continuación`,
   };
-
   const tagClass = { 'SOBREVENTA': 'blue', 'SOBRECOMPRA': 'red', 'EJECUCIÓN': 'green', 'TRANSICIÓN': 'orange' };
-
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const timeStr = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   const card = document.createElement('div');
   card.className = `alert-card ${zone.cls}`;
   card.innerHTML = `
     <div class="alert-card__type">RSI · ${tfLabel}</div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      <span class="alert-card__pair" style="color:${color}">BTC/USDT · ${tfLabel}</span>
+      <span class="alert-card__pair" style="color:${color}">${getPairName()} · ${tfLabel}</span>
       <span class="alert-card__msg">${msgs[zone.label] || zone.label}</span>
     </div>
     <div class="alert-card__meta">
@@ -402,65 +404,61 @@ function pushAlert(tf, rsi, zone, color) {
       <span class="alert-time">${timeStr}</span>
     </div>
   `;
-
   body.insertBefore(card, body.firstChild);
-
-  // Keep max 12 alerts
   const cards = body.querySelectorAll('.alert-card');
-  if (cards.length > 12) cards[cards.length - 1].remove();
+  if (cards.length > 20) cards[cards.length - 1].remove();
 }
 
 /* ════════════════════════════════════════════════════════
-   BINANCE — datos reales  (API pública, sin API key)
+   BINANCE — datos reales (API pública, sin API key)
    ════════════════════════════════════════════════════════ */
 
-const SYMBOL      = 'BTCUSDT';
+let SYMBOL = 'BTCUSDT';
 const RSI_PERIOD  = 14;
 const TF_INTERVAL = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
 
-// ─── RSI de Wilder (smoothing exponencial) ───
+function formatPrice(p) {
+  if (!p && p !== 0) return '—';
+  if (p >= 10000) return '$' + p.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (p >= 1000)  return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (p >= 100)   return '$' + p.toFixed(2);
+  if (p >= 1)     return '$' + p.toFixed(3);
+  if (p >= 0.01)  return '$' + p.toFixed(4);
+  return '$' + p.toPrecision(4);
+}
+
 function calcRSI(closes, period) {
   if (closes.length < period + 1) return null;
-
   let gains = 0, losses = 0;
   for (let i = 1; i <= period; i++) {
     const d = closes[i] - closes[i - 1];
     if (d > 0) gains += d; else losses -= d;
   }
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-
+  let avgGain = gains / period, avgLoss = losses / period;
   for (let i = period + 1; i < closes.length; i++) {
     const d = closes[i] - closes[i - 1];
     avgGain = (avgGain * (period - 1) + Math.max(d, 0))  / period;
     avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
   }
-
   if (avgLoss === 0) return 100;
   return 100 - 100 / (1 + avgGain / avgLoss);
 }
 
-// ─── Klines crudos (250 velas) — suficiente para EMA 200 + RSI 14 ───
 async function fetchKlines(tf) {
   const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF_INTERVAL[tf]}&limit=250`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = await r.json();
-  return data.map(k => parseFloat(k[4]));
+  return (await r.json()).map(k => parseFloat(k[4]));
 }
 
-// ─── EMA estándar con inicio SMA ───
 function calcEMA(closes, period) {
   if (closes.length < period) return null;
   const mult = 2 / (period + 1);
   let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  for (let i = period; i < closes.length; i++) {
-    ema = closes[i] * mult + ema * (1 - mult);
-  }
+  for (let i = period; i < closes.length; i++) ema = closes[i] * mult + ema * (1 - mult);
   return ema;
 }
 
-// ─── Estado de alertas EMA 100/200 por timeframe ───
 const emaAlertState = {
   '15m': { e100AboveE200: null, inProximity: false },
   '1h':  { e100AboveE200: null, inProximity: false },
@@ -468,28 +466,52 @@ const emaAlertState = {
   '1d':  { e100AboveE200: null, inProximity: false },
 };
 
-// ─── Actualiza UI del panel EMA ───
 function updateEMAUI(tf, price, e20, e50, e100, e200) {
-  [[20, e20], [50, e50], [100, e100], [200, e200]].forEach(([p, val]) => {
+  const emaColors = { 20: '#16c784', 50: '#0ea5e9', 100: '#f59e0b', 200: '#ea3943' };
+  const emas = [[20, e20], [50, e50], [100, e100], [200, e200]];
+  let aboveCount = 0, validCount = 0;
+
+  emas.forEach(([p, val]) => {
     if (val === null) return;
-    const valEl = document.getElementById(`ema-val-${tf}-${p}`);
-    const posEl = document.getElementById(`ema-pos-${tf}-${p}`);
-    if (valEl) valEl.textContent = '$' + val.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    validCount++;
+    const above = price >= val;
+    if (above) aboveCount++;
+    const diff = ((price - val) / val) * 100;
+    const valEl  = document.getElementById(`ema-val-${tf}-${p}`);
+    const posEl  = document.getElementById(`ema-pos-${tf}-${p}`);
+    const fillEl = document.getElementById(`ema-fill-${tf}-${p}`);
+    if (valEl) valEl.textContent = formatPrice(val);
     if (posEl) {
-      const above = price >= val;
-      posEl.textContent = above ? '↑ encima' : '↓ debajo';
+      posEl.textContent = (above ? '↑ +' : '↓ −') + Math.abs(diff).toFixed(2) + '%';
       posEl.className   = `ema-row__pos ${above ? 'above' : 'below'}`;
     }
+    if (fillEl) {
+      const fillPct = Math.min(100, (Math.abs(diff) / 12) * 100);
+      fillEl.style.width      = fillPct + '%';
+      fillEl.style.background = emaColors[p] || '#0ea5e9';
+      fillEl.style.opacity    = above ? '1' : '0.45';
+    }
   });
+
+  const trendEl = document.getElementById(`ema-trend-${tf}`);
+  if (trendEl && validCount > 0) {
+    const ratio = aboveCount / validCount;
+    let label, cls;
+    if (ratio >= 0.75)      { label = `${aboveCount}/${validCount} ↑ ALCISTA`; cls = 'bull'; }
+    else if (ratio <= 0.25) { label = `${aboveCount}/${validCount} ↓ BAJISTA`; cls = 'bear'; }
+    else                    { label = `${aboveCount}/${validCount} ~ MIXTO`;   cls = 'mixed'; }
+    trendEl.textContent = label;
+    trendEl.className   = `ema-card__trend ${cls}`;
+  }
 
   const badgeEl = document.getElementById(`ema-badge-${tf}`);
   if (!badgeEl || e100 === null || e200 === null) return;
 
-  const st         = emaAlertState[tf];
-  const pctDiff    = Math.abs(e100 - e200) / price;
-  const e100Above  = e100 > e200;
-  const crossed    = st.e100AboveE200 !== null && st.e100AboveE200 !== e100Above;
-  const inProx     = pctDiff < 0.005;
+  const st        = emaAlertState[tf];
+  const proximity = Math.abs(e100 - e200) / price;
+  const e100Above = e100 > e200;
+  const crossed   = st.e100AboveE200 !== null && st.e100AboveE200 !== e100Above;
+  const inProx    = proximity < 0.005;
 
   if (crossed) {
     const dir = e100Above ? 'ALCISTA' : 'BAJISTA';
@@ -498,47 +520,46 @@ function updateEMAUI(tf, price, e20, e50, e100, e200) {
     pushEMAAlert(tf, 'cross', e100Above, e100, e200, price);
   } else if (inProx) {
     badgeEl.className   = 'ema-card__badge proximity';
-    badgeEl.textContent = `⚠ EMA 100 y 200 próximas · ${(pctDiff * 100).toFixed(2)}%`;
+    badgeEl.textContent = `⚠ EMA 100 y 200 próximas · ${(proximity * 100).toFixed(2)}%`;
     if (!st.inProximity) pushEMAAlert(tf, 'proximity', e100Above, e100, e200, price);
   } else {
     badgeEl.className   = 'ema-card__badge';
     badgeEl.textContent = '';
   }
-
   st.e100AboveE200 = e100Above;
   st.inProximity   = inProx;
 }
 
-// ─── Alerta EMA en el panel de alertas ───
 function pushEMAAlert(tf, type, e100Above, e100, e200, price) {
   const body = document.getElementById('alertsBody');
   if (!body) return;
-
   const empty = body.querySelector('.alert-empty');
   if (empty) empty.remove();
 
   alertCount++;
-  document.getElementById('alertCount').textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  const countEl = document.getElementById('alertCount');
+  if (countEl) countEl.textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  updateMbarAlerts();
 
   const tfLabel  = tf.toUpperCase();
   const timeStr  = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const priceStr = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const priceStr = formatPrice(price);
 
   let msg, tagText, accentCls, tagCls, pairColor;
   if (type === 'cross') {
     const dir  = e100Above ? 'ALCISTA' : 'BAJISTA';
-    msg        = `Cruce ${dir} de EMA 100 × EMA 200 en ${tfLabel} — precio: $${priceStr}`;
+    msg        = `Cruce ${dir} de EMA 100 × EMA 200 en ${tfLabel} — precio: ${priceStr}`;
     tagText    = `⚡ CRUCE ${dir}`;
     accentCls  = e100Above ? 'a-green' : 'a-red';
     tagCls     = e100Above ? 'green'   : 'red';
-    pairColor  = e100Above ? '#22c55e' : '#ef4444';
+    pairColor  = e100Above ? '#16c784' : '#ea3943';
   } else {
     const pct  = (Math.abs(e100 - e200) / price * 100).toFixed(2);
     msg        = `EMA 100 y EMA 200 a ${pct}% de diferencia en ${tfLabel} — posible cruce inminente`;
     tagText    = '⚠ PROXIMIDAD';
     accentCls  = 'a-orange';
     tagCls     = 'orange';
-    pairColor  = '#f97316';
+    pairColor  = '#f59e0b';
   }
 
   const card = document.createElement('div');
@@ -546,7 +567,7 @@ function pushEMAAlert(tf, type, e100Above, e100, e200, price) {
   card.innerHTML = `
     <div class="alert-card__type">EMA · ${tfLabel}</div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      <span class="alert-card__pair" style="color:${pairColor}">BTC/USDT · ${tfLabel}</span>
+      <span class="alert-card__pair" style="color:${pairColor}">${getPairName()} · ${tfLabel}</span>
       <span class="alert-card__msg">${msg}</span>
     </div>
     <div class="alert-card__meta">
@@ -554,33 +575,31 @@ function pushEMAAlert(tf, type, e100Above, e100, e200, price) {
       <span class="alert-time">${timeStr}</span>
     </div>
   `;
-
   body.insertBefore(card, body.firstChild);
   const cards = body.querySelectorAll('.alert-card');
-  if (cards.length > 12) cards[cards.length - 1].remove();
+  if (cards.length > 20) cards[cards.length - 1].remove();
 }
 
 /* ════════════════════════════════════════════════════════
    PATRÓN DE SOBREEXTENSIÓN — 1H / 4H
    ════════════════════════════════════════════════════════ */
 
-// Estado activo por clave tf_direction (en memoria, reset al recargar)
 const patternActive = {};
 
 function checkExtensionPattern(tf, rsi, price, e20, e50, e100, e200) {
   if (!['1h', '4h'].includes(tf)) return;
-  if (rsi === null || e20 === null || e50 === null || e100 === null || e200 === null) return;
+  if ([rsi, e20, e50, e100, e200].some(v => v === null)) return;
 
-  const inRange  = rsi >= 40 && rsi <= 60;
-  const isBull   = inRange && price > e20 && price < e50 && price < e100 && price < e200;
-  const isBear   = inRange && price < e20 && price > e50 && price > e100 && price > e200;
+  const inRange = rsi >= 40 && rsi <= 60;
+  const isBull  = inRange && price > e20 && price < e50 && price < e100 && price < e200;
+  const isBear  = inRange && price < e20 && price > e50 && price > e100 && price > e200;
 
-  const today    = new Date().toISOString().slice(0, 10);
-  const seen     = JSON.parse(localStorage.getItem('sd_signals') || '{}');
+  const today = new Date().toISOString().slice(0, 10);
+  const seen  = JSON.parse(localStorage.getItem('sd_signals') || '{}');
 
-  const trigger  = (dir, active) => {
-    const key   = `${tf}_${dir}`;
-    const was   = patternActive[key];
+  const trigger = (dir, active) => {
+    const key = `${SYMBOL}_${tf}_${dir}`;
+    const was = patternActive[key];
     patternActive[key] = active;
     if (active && !was) {
       const dayKey = `${key}_${today}`;
@@ -601,13 +620,13 @@ function showSignalModal(tf, dir, price, rsi) {
   const overlay = document.getElementById('signalModal');
   const inner   = document.getElementById('signalModalInner');
   if (!overlay || !inner) return;
-
   const isAlc = dir === 'alcista';
   inner.className = `sig-modal ${dir}`;
   document.getElementById('signalModalBadge').textContent  = isAlc ? '▲ ALCISTA' : '▼ BAJISTA';
   document.getElementById('signalModalTitle').textContent  = isAlc ? 'Señal Revisión Alcista' : 'Señal de Revisión Bajista';
+  document.getElementById('signalModalAsset').textContent  = getPairName();
   document.getElementById('signalModalTF').textContent     = tf.toUpperCase();
-  document.getElementById('signalModalPrice').textContent  = '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  document.getElementById('signalModalPrice').textContent  = formatPrice(price);
   document.getElementById('signalModalRSI').textContent    = rsi.toFixed(1);
   overlay.style.display = 'flex';
 }
@@ -615,58 +634,54 @@ function showSignalModal(tf, dir, price, rsi) {
 function pushPatternAlert(tf, dir, price, rsi) {
   const body = document.getElementById('alertsBody');
   if (!body) return;
-
   const empty = body.querySelector('.alert-empty');
   if (empty) empty.remove();
 
   alertCount++;
-  document.getElementById('alertCount').textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  const countEl = document.getElementById('alertCount');
+  if (countEl) countEl.textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  updateMbarAlerts();
 
   const isAlc     = dir === 'alcista';
   const tfLabel   = tf.toUpperCase();
   const timeStr   = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const priceStr  = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
   const title     = isAlc ? 'Señal Revisión Alcista' : 'Señal de Revisión Bajista';
   const accentCls = isAlc ? 'a-green' : 'a-red';
   const tagCls    = isAlc ? 'green'   : 'red';
   const tagText   = isAlc ? '▲ ALCISTA' : '▼ BAJISTA';
-  const clr       = isAlc ? '#3a8a5c'  : '#a04040';
+  const clr       = isAlc ? '#16c784'  : '#ea3943';
 
   const card = document.createElement('div');
   card.className = `alert-card ${accentCls}`;
   card.innerHTML = `
     <div class="alert-card__type">PATRÓN · ${tfLabel}</div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      <span class="alert-card__pair" style="color:${clr}">BTC/USDT · ${tfLabel}</span>
-      <span class="alert-card__msg">${title} — precio: $${priceStr} · RSI: ${rsi.toFixed(1)}</span>
+      <span class="alert-card__pair" style="color:${clr}">${getPairName()} · ${tfLabel}</span>
+      <span class="alert-card__msg">${title} — precio: ${formatPrice(price)} · RSI: ${rsi.toFixed(1)}</span>
     </div>
     <div class="alert-card__meta">
       <span class="alert-tag ${tagCls}">${tagText}</span>
       <span class="alert-time">${timeStr}</span>
     </div>
   `;
-
   body.insertBefore(card, body.firstChild);
   const cards = body.querySelectorAll('.alert-card');
-  if (cards.length > 12) cards[cards.length - 1].remove();
+  if (cards.length > 20) cards[cards.length - 1].remove();
 }
 
-// ─── Ticker 24h → precio + cambio % ───
 async function fetchTicker() {
   const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${SYMBOL}`);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
 
-// ─── Indicador de estado en el header ───
 function setStatus(ok) {
   const dot  = document.querySelector('.status-dot');
   const text = document.querySelector('.status-text');
-  if (dot)  dot.style.background = ok ? '' : '#ef4444';
+  if (dot)  dot.style.background = ok ? '' : '#ea3943';
   if (text) text.textContent = ok ? 'En vivo · Binance' : 'Error conexión';
 }
 
-// ─── Actualiza RSI + EMAs para los 4 timeframes en paralelo ───
 async function updateAllData() {
   const tfs     = ['15m', '1h', '4h', '1d'];
   const results = await Promise.allSettled(tfs.map(async tf => {
@@ -695,17 +710,17 @@ async function updateAllData() {
     checkExtensionPattern(tf, rsi, price, e20, e50, e100, e200);
   });
   setStatus(anyOk);
+  if (anyOk) updateMbar();
 }
 
-// ─── Actualiza precio en pair-bar ───
 async function updatePrice() {
   try {
-    const t    = await fetchTicker();
-    const price = parseFloat(t.lastPrice);
-    const pct   = parseFloat(t.priceChangePercent);
+    const t      = await fetchTicker();
+    const price  = parseFloat(t.lastPrice);
+    const pct    = parseFloat(t.priceChangePercent);
     const priceEl  = document.getElementById('pairPrice');
     const changeEl = document.getElementById('pairChange');
-    if (priceEl) priceEl.textContent = '$' + price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (priceEl) priceEl.textContent = formatPrice(price);
     if (changeEl) {
       const up = pct >= 0;
       changeEl.textContent = (up ? '+' : '') + pct.toFixed(2) + '%';
@@ -716,15 +731,214 @@ async function updatePrice() {
   }
 }
 
+function updateMbar() {
+  const rsi4h = targets['4h'], rsi1d = targets['1d'];
+  const avg   = (rsi4h + rsi1d) / 2;
+
+  const rsiEl  = document.getElementById('mbarAvgRSI');
+  const sentEl = document.getElementById('mbarSentiment');
+  if (rsiEl) rsiEl.textContent = avg.toFixed(1);
+  if (sentEl) {
+    let txt, col;
+    if (avg < 30)      { txt = 'Sobreventa';  col = '#1d9bf0'; }
+    else if (avg < 45) { txt = 'Bajista';     col = '#ea3943'; }
+    else if (avg < 55) { txt = 'Neutral';     col = '#8898a8'; }
+    else if (avg < 68) { txt = 'Alcista';     col = '#16c784'; }
+    else               { txt = 'Sobrecompra'; col = '#ea3943'; }
+    sentEl.textContent = txt;
+    sentEl.style.color = col;
+  }
+}
+
 /* ════════════════════════════════════════════════════════
-   BOOT
+   ASSET STRIP — selector de activo para el dashboard
+   ════════════════════════════════════════════════════════ */
+
+async function fetchAllTickers() {
+  const symsJson = JSON.stringify(COMP_ASSETS);
+  const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(symsJson)}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const arr = await r.json();
+  const out = {};
+  arr.forEach(t => { out[t.symbol] = t; });
+  return out;
+}
+
+function initAssetStrip() {
+  const strip = document.getElementById('assetStrip');
+  if (!strip) return;
+  strip.innerHTML = COMP_ASSETS.map(sym => {
+    const name = sym.replace('USDT', '');
+    const rank = CMC_RANKS[sym] || '—';
+    return `<div class="asset-chip" data-sym="${sym}">
+      <div class="asset-chip__top">
+        <span class="asset-chip__rank">#${rank}</span>
+        <span class="asset-chip__name">${name}</span>
+      </div>
+      <span class="asset-chip__price font-mono" id="achip-price-${sym}">—</span>
+      <span class="asset-chip__chg" id="achip-chg-${sym}">—%</span>
+    </div>`;
+  }).join('');
+
+  strip.querySelectorAll('.asset-chip').forEach(chip => {
+    chip.addEventListener('click', () => selectAsset(chip.dataset.sym));
+  });
+  setActiveChip(SYMBOL);
+}
+
+function setActiveChip(sym) {
+  document.querySelectorAll('.asset-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.sym === sym);
+  });
+}
+
+function updateAssetStripPrices(tickers) {
+  COMP_ASSETS.forEach(sym => {
+    const t = tickers[sym];
+    if (!t) return;
+    const price = parseFloat(t.lastPrice);
+    const pct   = parseFloat(t.priceChangePercent);
+    const prEl  = document.getElementById(`achip-price-${sym}`);
+    const chgEl = document.getElementById(`achip-chg-${sym}`);
+    if (prEl)  prEl.textContent = formatPrice(price);
+    if (chgEl) {
+      const up = pct >= 0;
+      chgEl.textContent = (up ? '+' : '') + pct.toFixed(2) + '%';
+      chgEl.className   = `asset-chip__chg ${up ? 'up' : 'down'}`;
+    }
+  });
+}
+
+async function selectAsset(sym) {
+  if (sym === SYMBOL) return;
+  switchingAsset = true;
+  SYMBOL = sym;
+
+  const name   = ASSET_NAMES[sym] || sym.replace('USDT', '');
+  const ticker = getPairName(sym);
+
+  const fullEl   = document.getElementById('pairAssetFull');
+  const badgeEl  = document.getElementById('pairBadge');
+  const titleEl  = document.getElementById('emaSectionTitle');
+  if (fullEl)  fullEl.textContent  = name;
+  if (badgeEl) badgeEl.textContent = ticker;
+  if (titleEl) titleEl.textContent = `◈ EMAs · ${ticker} · Medias Exponenciales`;
+
+  const modalAsset = document.getElementById('signalModalAsset');
+  if (modalAsset) modalAsset.textContent = ticker;
+
+  ['15m', '1h', '4h', '1d'].forEach(tf => {
+    animated[tf]  = 50;
+    targets[tf]   = 50;
+    prevZones[tf] = null;
+    prevRsi[tf]   = 50;
+    emaAlertState[tf].e100AboveE200 = null;
+    emaAlertState[tf].inProximity   = false;
+    const badge = document.getElementById(`ema-badge-${tf}`);
+    if (badge) { badge.className = 'ema-card__badge'; badge.textContent = ''; }
+    [20, 50, 100, 200].forEach(p => {
+      const v   = document.getElementById(`ema-val-${tf}-${p}`);
+      const pos = document.getElementById(`ema-pos-${tf}-${p}`);
+      if (v)   v.textContent   = '—';
+      if (pos) { pos.textContent = ''; pos.className = 'ema-row__pos'; }
+    });
+  });
+
+  Object.keys(patternActive).forEach(k => { if (k.startsWith(sym)) delete patternActive[k]; });
+
+  const priceEl  = document.getElementById('pairPrice');
+  const changeEl = document.getElementById('pairChange');
+  if (priceEl)  priceEl.textContent  = '—';
+  if (changeEl) { changeEl.textContent = '—%'; changeEl.className = 'pair-change neutral'; }
+
+  setActiveChip(sym);
+  setActiveGaugeTab(sym);
+
+  try {
+    await Promise.all([updateAllData(), updatePrice()]);
+  } finally {
+    switchingAsset = false;
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   BACKGROUND MONITOR — RSI alerts para todos los activos
+   ════════════════════════════════════════════════════════ */
+
+const bgZones = {};
+
+async function bgMonitorAssets() {
+  const assets = COMP_ASSETS.filter(s => s !== SYMBOL);
+  await Promise.allSettled(assets.map(async sym => {
+    try {
+      const [r4h, r1d] = await Promise.all([
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=4h&limit=50`),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=50`)
+      ]);
+      const [k4h, k1d] = await Promise.all([r4h.json(), r1d.json()]);
+      if (!bgZones[sym]) bgZones[sym] = {};
+
+      for (const [tf, klines] of [['4h', k4h], ['1d', k1d]]) {
+        const closes = klines.map(k => parseFloat(k[4]));
+        const rsi    = calcRSI(closes, RSI_PERIOD);
+        if (rsi === null) continue;
+        const zone = getZone(rsi);
+        const prev = bgZones[sym][tf];
+        if (prev !== undefined && prev !== zone.label) {
+          pushAlertForAsset(sym, tf, rsi, zone);
+        }
+        bgZones[sym][tf] = zone.label;
+      }
+    } catch {}
+  }));
+}
+
+function pushAlertForAsset(sym, tf, rsi, zone) {
+  const body = document.getElementById('alertsBody');
+  if (!body) return;
+  const empty = body.querySelector('.alert-empty');
+  if (empty) empty.remove();
+
+  alertCount++;
+  const countEl = document.getElementById('alertCount');
+  if (countEl) countEl.textContent = `${alertCount} ${alertCount === 1 ? 'alerta' : 'alertas'}`;
+  updateMbarAlerts();
+
+  const name    = sym.replace('USDT', '');
+  const tfLabel = tf.toUpperCase();
+  const color   = getRSIColor(rsi);
+  const timeStr = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const msgs = {
+    'SOBREVENTA':  `RSI en zona de sobreventa extrema (${rsi.toFixed(1)}) — buscar formación de patrón`,
+    'SOBRECOMPRA': `RSI en sobrecompra (${rsi.toFixed(1)}) — alerta de reversión`,
+    'EJECUCIÓN':   `RSI en zona de gatillo (${rsi.toFixed(1)}) — condición de entrada activa`,
+    'TRANSICIÓN':  `RSI salió de zona extrema (${rsi.toFixed(1)}) — monitorear continuación`,
+  };
+  const tagClass = { 'SOBREVENTA': 'blue', 'SOBRECOMPRA': 'red', 'EJECUCIÓN': 'green', 'TRANSICIÓN': 'orange' };
+
+  const card = document.createElement('div');
+  card.className = `alert-card ${zone.cls}`;
+  card.innerHTML = `
+    <div class="alert-card__type">RSI · ${tfLabel}</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="alert-card__pair" style="color:${color}">${name}/USDT · ${tfLabel}</span>
+      <span class="alert-card__msg">${msgs[zone.label] || zone.label}</span>
+    </div>
+    <div class="alert-card__meta">
+      <span class="alert-tag ${tagClass[zone.label] || 'orange'}">◈ ${zone.label}</span>
+      <span class="alert-time">${timeStr}</span>
+    </div>
+  `;
+  body.insertBefore(card, body.firstChild);
+  const cards = body.querySelectorAll('.alert-card');
+  if (cards.length > 20) cards[cards.length - 1].remove();
+}
+
+/* ════════════════════════════════════════════════════════
+   BOOT — dashboard
    ════════════════════════════════════════════════════════ */
 ['15m', '1h', '4h', '1d'].forEach(tf => buildGauge(`gauge-${tf}`));
-
-// Animación RAF
 rafLoop();
-
-// Render inicial en RSI 50 mientras llega el primer fetch
 ['15m', '1h', '4h', '1d'].forEach(tf => {
   animated[tf]  = 50;
   targets[tf]   = 50;
@@ -732,53 +946,251 @@ rafLoop();
   applyGaugeUI(tf, 50);
 });
 
-// Modal de señal — cerrar con botón o clic en overlay
 (function () {
   const overlay = document.getElementById('signalModal');
   const btn     = document.getElementById('signalModalClose');
   if (!overlay) return;
-  btn?.addEventListener('click',  () => { overlay.style.display = 'none'; });
+  btn?.addEventListener('click', () => { overlay.style.display = 'none'; });
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
 })();
 
-// Primera carga inmediata, luego cada 30 segundos
 updateAllData();
 updatePrice();
 setInterval(updateAllData, 30_000);
 setInterval(updatePrice,   30_000);
 
+initAssetStrip();
+initGaugeTabs();
+fetchAllTickers().then(t => updateAssetStripPrices(t)).catch(() => {});
+setInterval(async () => {
+  try { updateAssetStripPrices(await fetchAllTickers()); } catch {}
+}, 30_000);
+
+setTimeout(async () => {
+  await bgMonitorAssets();
+  setInterval(bgMonitorAssets, 5 * 60_000);
+}, 45_000);
+
+setTimeout(async () => {
+  await updateRSIIndex();
+  setInterval(updateRSIIndex, 5 * 60_000);
+}, 15_000);
+
+/* ════════════════════════════════════════════════════════
+   GAUGE TABS — selector de activo para osciladores
+   ════════════════════════════════════════════════════════ */
+
+function initGaugeTabs() {
+  document.querySelectorAll('.gauge-tab').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.gauge-tab').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      selectAsset(this.dataset.sym);
+    });
+  });
+}
+
+function setActiveGaugeTab(sym) {
+  document.querySelectorAll('.gauge-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.sym === sym);
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   ÍNDICE RSI — Promedio Multi-Asset (30 días)
+   ════════════════════════════════════════════════════════ */
+
+const RSI_INDEX_ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
+
+function calcRSISeries(closes, period) {
+  if (closes.length < period + 1) return [];
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  const out = [];
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(d, 0))  / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-d, 0)) / period;
+    out.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  }
+  return out;
+}
+
+async function fetchRSIIndexData() {
+  const results = await Promise.allSettled(RSI_INDEX_ASSETS.map(async sym => {
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=60`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const klines = await r.json();
+    return { sym, closes: klines.map(k => parseFloat(k[4])), dates: klines.map(k => k[0]) };
+  }));
+  return results.filter(r => r.status === 'fulfilled').map(r => r.value);
+}
+
+function drawRSIIndexChart(avgSeries, dates) {
+  const canvas  = document.getElementById('rsiIndexChart');
+  const loading = document.getElementById('rsiIndexLoading');
+  if (!canvas) return;
+  if (loading) loading.style.display = 'none';
+
+  const dpr  = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W    = Math.max(Math.floor(rect.width), 200);
+  const H    = Math.max(Math.floor(rect.height || 240), 200);
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { t: 14, b: 28, l: 34, r: 12 };
+  const cW  = W - pad.l - pad.r;
+  const cH  = H - pad.t - pad.b;
+
+  ctx.fillStyle = '#0d1421';
+  ctx.fillRect(0, 0, W, H);
+
+  const yOf = v => pad.t + cH - ((Math.max(0, Math.min(100, v))) / 100) * cH;
+  const xOf = (i, tot) => pad.l + (i / Math.max(tot - 1, 1)) * cW;
+
+  [
+    { y0: 0,  y1: 26,  color: 'rgba(29,155,240,0.10)' },
+    { y0: 40, y1: 60,  color: 'rgba(22,199,132,0.10)' },
+    { y0: 74, y1: 100, color: 'rgba(234,57,67,0.10)'  },
+  ].forEach(z => {
+    ctx.fillStyle = z.color;
+    ctx.fillRect(pad.l, yOf(z.y1), cW, yOf(z.y0) - yOf(z.y1));
+  });
+
+  ctx.font      = '9px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign = 'right';
+  [26, 40, 50, 60, 74].forEach(level => {
+    const y = yOf(level);
+    ctx.setLineDash([3, 5]);
+    ctx.strokeStyle = level === 50 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillText(level, pad.l - 3, y + 3.5);
+  });
+
+  if (avgSeries.length < 2) return;
+  const tot = avgSeries.length;
+
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + cH);
+  grad.addColorStop(0, 'rgba(14,165,233,0.28)');
+  grad.addColorStop(1, 'rgba(14,165,233,0.00)');
+  ctx.beginPath();
+  ctx.moveTo(xOf(0, tot), yOf(avgSeries[0]));
+  for (let i = 1; i < tot; i++) ctx.lineTo(xOf(i, tot), yOf(avgSeries[i]));
+  ctx.lineTo(xOf(tot - 1, tot), pad.t + cH);
+  ctx.lineTo(xOf(0, tot), pad.t + cH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#0ea5e9';
+  ctx.lineWidth   = 2;
+  ctx.lineJoin    = 'round';
+  for (let i = 0; i < tot; i++) {
+    const x = xOf(i, tot), y = yOf(avgSeries[i]);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle  = 'rgba(255,255,255,0.28)';
+  ctx.textAlign  = 'center';
+  ctx.font       = '9px "JetBrains Mono",Consolas,monospace';
+  const lblN = Math.min(5, tot - 1);
+  for (let li = 0; li <= lblN; li++) {
+    const di = Math.round((li / lblN) * (tot - 1));
+    const d  = new Date(dates[di]);
+    ctx.fillText(d.toLocaleDateString('es', { month: 'short', day: 'numeric' }), xOf(di, tot), H - 7);
+  }
+
+  ctx.beginPath();
+  ctx.arc(xOf(tot - 1, tot), yOf(avgSeries[tot - 1]), 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#0ea5e9';
+  ctx.fill();
+}
+
+function updateRSIIndexCards(rsiMap) {
+  RSI_INDEX_ASSETS.forEach(sym => {
+    const val  = rsiMap[sym];
+    const card = document.getElementById(`rsi-idx-${sym}`);
+    if (!card || val == null) return;
+    const color  = getRSIColor(val);
+    const zone   = getZone(val);
+    const valEl  = card.querySelector('.rsi-idx-val');
+    const zoneEl = card.querySelector('.rsi-idx-zone');
+    if (valEl)  { valEl.textContent = val.toFixed(1); valEl.style.color = color; }
+    if (zoneEl) { zoneEl.textContent = zone.label;    zoneEl.style.color = color; }
+    card.style.borderColor = color + '44';
+  });
+}
+
+async function updateRSIIndex() {
+  const loading = document.getElementById('rsiIndexLoading');
+  if (loading) loading.style.display = 'flex';
+  try {
+    const assetData = await fetchRSIIndexData();
+    if (assetData.length === 0) return;
+
+    const rsiSeriesMap = {}, rsiCurrentMap = {};
+    assetData.forEach(({ sym, closes }) => {
+      const series = calcRSISeries(closes, RSI_PERIOD);
+      rsiSeriesMap[sym]  = series;
+      rsiCurrentMap[sym] = series.length ? series[series.length - 1] : null;
+    });
+
+    const N = 30;
+    const aligned = assetData.map(({ sym }) => {
+      const s = rsiSeriesMap[sym] || [];
+      return s.length > N ? s.slice(-N) : s;
+    });
+    const minLen = Math.min(...aligned.map(s => s.length));
+    if (minLen < 2) return;
+
+    const avgSeries = Array.from({ length: minLen }, (_, i) =>
+      aligned.reduce((acc, s) => acc + s[s.length - minLen + i], 0) / aligned.length
+    );
+
+    const refData  = assetData[0];
+    const allDates = refData.dates.slice(RSI_PERIOD + 1);
+    const dates    = allDates.slice(-minLen);
+
+    drawRSIIndexChart(avgSeries, dates);
+    updateRSIIndexCards(rsiCurrentMap);
+
+    const currentAvg = avgSeries[avgSeries.length - 1];
+    const avgEl  = document.getElementById('rsiIndexAvg');
+    const zoneEl = document.getElementById('rsiIndexZone');
+    if (avgEl)  { avgEl.textContent = currentAvg.toFixed(1); avgEl.style.color = getRSIColor(currentAvg); }
+    if (zoneEl) { const z = getZone(currentAvg); zoneEl.textContent = z.label; zoneEl.style.color = getRSIColor(currentAvg); }
+  } catch (e) {
+    console.warn('RSI Index error:', e.message);
+    if (loading) loading.style.display = 'none';
+  }
+}
+
 /* ════════════════════════════════════════════════════════
    COMPARACIONES — Rendimiento Relativo Multi-Activo
    ════════════════════════════════════════════════════════ */
 
-const COMP_ASSETS = [
-  'BTCUSDT','ETHUSDT','XRPUSDT','BNBUSDT','SOLUSDT','ADAUSDT',
-  'BCHUSDT','LINKUSDT','XLMUSDT','TONUSDT','AVAXUSDT','SUIUSDT',
-  'TAOUSDT','DOTUSDT','UNIUSDT','NEARUSDT','AAVEUSDT','ALGOUSDT',
-  'ENAUSDT','INJUSDT','RNDRUSDT','FETUSDT'
-];
-const AI_ASSETS = ['TAOUSDT','FETUSDT','RNDRUSDT','NEARUSDT','INJUSDT'];
-
-const COMP_COLORS = {
-  BTCUSDT:  '#b87c28', ETHUSDT:  '#6370a0', XRPUSDT:  '#2878a8',
-  BNBUSDT:  '#a88828', SOLUSDT:  '#6e38b8', ADAUSDT:  '#2060a8',
-  BCHUSDT:  '#5a8030', LINKUSDT: '#284898', XLMUSDT:  '#1878a0',
-  TONUSDT:  '#1870b0', AVAXUSDT: '#9c3030', SUIUSDT:  '#3a70a8',
-  TAOUSDT:  '#2e7878', DOTUSDT:  '#903468', UNIUSDT:  '#903458',
-  NEARUSDT: '#1a7858', AAVEUSDT: '#683870', ALGOUSDT: '#1878a0',
-  ENAUSDT:  '#6a8828', INJUSDT:  '#1880a8', RNDRUSDT: '#b86828',
-  FETUSDT:  '#1888a8'
-};
-
-let compData      = null;
-let compPeriod    = '1w';
-let compBusy      = false;
-let compTab       = 'global';
+let compData       = null;
+let compPeriod     = '1w';
+let compBusy       = false;
+let compTab        = 'global';
 let disabledGlobal = new Set();
 
 const PERIOD_SLICES = { '1w': 8, '1m': 31, '1y': 366 };
 
-// ── Data fetch (366 días para soportar % Año) ─────────────
 async function fetchCompData() {
   const out = {};
   await Promise.allSettled(COMP_ASSETS.map(async sym => {
@@ -793,7 +1205,6 @@ async function fetchCompData() {
   return out;
 }
 
-// ── Nice Y ticks ──────────────────────────────────────────
 function compNiceTicks(min, max, n) {
   const rng = max - min || 1;
   const raw = rng / n;
@@ -805,7 +1216,6 @@ function compNiceTicks(min, max, n) {
   return ticks;
 }
 
-// ── Build normalized series ───────────────────────────────
 function buildCompSeries(data, assetList, period) {
   const sliceN = PERIOD_SLICES[period] || 31;
   const out = [];
@@ -824,7 +1234,6 @@ function buildCompSeries(data, assetList, period) {
   return out;
 }
 
-// ── Draw chart ────────────────────────────────────────────
 function drawCompChart(series, canvasId, loadingId) {
   const canvas = document.getElementById(canvasId);
   const loadEl = document.getElementById(loadingId);
@@ -855,7 +1264,7 @@ function drawCompChart(series, canvasId, loadingId) {
   const xOf = (i, tot) => pad.l + (i / (tot - 1)) * cW;
   const yOf = v => pad.t + cH - ((v - minV) / (maxV - minV)) * cH;
 
-  ctx.fillStyle = '#0b0e17'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#111927'; ctx.fillRect(0, 0, W, H);
 
   const ticks = compNiceTicks(minV, maxV, 6);
   ctx.font = '10px "JetBrains Mono",Consolas,monospace'; ctx.textAlign = 'right';
@@ -863,16 +1272,16 @@ function drawCompChart(series, canvasId, loadingId) {
   for (const t of ticks) {
     const y = yOf(t);
     if (y < pad.t - 4 || y > pad.t + cH + 4) continue;
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
     ctx.fillText((t >= 0 ? '+' : '') + t.toFixed(0) + '%', pad.l - 5, y + 3.5);
   }
   ctx.setLineDash([]);
 
   const y0 = yOf(0);
   if (y0 >= pad.t && y0 <= pad.t + cH) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.l, y0); ctx.lineTo(W - pad.r, y0); ctx.stroke();
   }
 
@@ -886,13 +1295,13 @@ function drawCompChart(series, canvasId, loadingId) {
     ctx.fillText(d.toLocaleDateString('es', { month: 'short', day: 'numeric' }), xOf(di, totPt), H - 7);
   }
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + cH); ctx.lineTo(W - pad.r, pad.t + cH); ctx.stroke();
 
   const drawOrder = [...series].sort((a, b) => a.cur - b.cur);
   for (const s of drawOrder) {
     const tot = s.vals.length;
-    ctx.beginPath(); ctx.strokeStyle = s.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.82;
+    ctx.beginPath(); ctx.strokeStyle = s.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.85;
     for (let i = 0; i < tot; i++) { const x = xOf(i, tot), y = yOf(s.vals[i]); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
     ctx.stroke();
     ctx.globalAlpha = 1;
@@ -902,27 +1311,23 @@ function drawCompChart(series, canvasId, loadingId) {
   ctx.globalAlpha = 1;
 }
 
-// ── Draw legend (with optional toggle) ───────────────────
 function drawCompLegend(allSeries, disabledSet, legendId, onToggle) {
   const el = document.getElementById(legendId);
   if (!el) return;
-
   const sorted = [...allSeries].sort((a, b) => {
     const ad = disabledSet && disabledSet.has(a.sym);
     const bd = disabledSet && disabledSet.has(b.sym);
     if (ad !== bd) return ad ? 1 : -1;
     return b.cur - a.cur;
   });
-
   el.innerHTML = sorted.map(s => {
     const dis = disabledSet && disabledSet.has(s.sym);
     return `<div class="comp-leg-item${dis ? ' is-off' : ''}" data-sym="${s.sym}">
-      <span class="comp-leg-sw" style="background:${dis ? '#2a2d3a' : s.color}"></span>
+      <span class="comp-leg-sw" style="background:${dis ? '#2a3d52' : s.color}"></span>
       <span class="comp-leg-nm">${s.name}</span>
       <span class="comp-leg-pc ${s.cur >= 0 ? 'pos' : 'neg'}">${s.cur >= 0 ? '+' : ''}${s.cur.toFixed(2)}%</span>
     </div>`;
   }).join('');
-
   if (onToggle) {
     el.querySelectorAll('.comp-leg-item[data-sym]').forEach(item => {
       item.addEventListener('click', () => onToggle(item.dataset.sym));
@@ -930,7 +1335,6 @@ function drawCompLegend(allSeries, disabledSet, legendId, onToggle) {
   }
 }
 
-// ── Draw table ────────────────────────────────────────────
 function drawCompTable(data, period, activeAssets, tbodyId, thIds) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -946,7 +1350,12 @@ function drawCompTable(data, period, activeAssets, tbodyId, thIds) {
     const pWeek  = closes.length >= 8   ? ((last / closes[closes.length - 8])   - 1) * 100 : null;
     const pMonth = closes.length >= 31  ? ((last / closes[closes.length - 31])  - 1) * 100 : null;
     const pYear  = closes.length >= 2   ? ((last / closes[0])                   - 1) * 100 : null;
-    rows.push({ sym, name: sym.replace('USDT',''), price, pDay, pWeek, pMonth, pYear, color: COMP_COLORS[sym]||'#888' });
+    rows.push({
+      sym, name: sym.replace('USDT',''), price, pDay, pWeek, pMonth, pYear,
+      color: COMP_COLORS[sym] || '#888',
+      rank: CMC_RANKS[sym] || 999,
+      cat:  ASSET_CATS[sym]  || { cat: '—', cls: 'cat-default' }
+    });
   }
 
   const sortMap = { '1w': 'pWeek', '1m': 'pMonth', '1y': 'pYear' };
@@ -956,22 +1365,26 @@ function drawCompTable(data, period, activeAssets, tbodyId, thIds) {
   const fp = p => p == null ? '<td class="comp-na">—</td>'
     : `<td class="comp-pc ${p >= 0 ? 'pos' : 'neg'}">${p >= 0 ? '+' : ''}${p.toFixed(2)}%</td>`;
 
-  const fv = p => p >= 10000 ? p.toLocaleString('en',{maximumFractionDigits:0}) : p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toPrecision(4);
+  const fv = p => p >= 10000 ? p.toLocaleString('en',{maximumFractionDigits:0})
+    : p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toPrecision(4);
+
+  const rankCls = r => r.rank <= 5 ? 'rank-gold' : r.rank <= 25 ? 'rank-silver' : 'rank-bronze';
 
   tbody.innerHTML = rows.map((r, i) => `<tr class="${i % 2 ? 'alt' : ''}">
-    <td><div class="comp-asset-cell"><span class="comp-sw" style="background:${r.color}"></span><span class="comp-nm">${r.name}</span></div></td>
+    <td><span class="rank-badge ${rankCls(r)}">${r.rank}</span></td>
+    <td class="td-asset"><div class="comp-asset-cell"><span class="comp-sw" style="background:${r.color}"></span><span class="comp-nm">${r.name}</span></div></td>
+    <td class="td-cat"><span class="cat-badge ${r.cat.cls}">${r.cat.cat}</span></td>
     <td class="comp-price font-mono">$${fv(r.price)}</td>
     ${fp(r.pDay)}${fp(r.pWeek)}${fp(r.pMonth)}${fp(r.pYear)}
   </tr>`).join('');
 
   if (thIds) {
     [thIds.thDay,thIds.thWeek,thIds.thMonth,thIds.thYear].forEach(id => document.getElementById(id)?.classList.remove('sorted'));
-    const activeThId = sortMap[period] === 'pWeek' ? thIds.thWeek : sortMap[period] === 'pMonth' ? thIds.thMonth : thIds.thYear;
+    const activeThId = sk === 'pWeek' ? thIds.thWeek : sk === 'pMonth' ? thIds.thMonth : thIds.thYear;
     document.getElementById(activeThId)?.classList.add('sorted');
   }
 }
 
-// ── Disabled bar (Global) ─────────────────────────────────
 function updateDisabledBar() {
   const bar = document.getElementById('disabledBar');
   if (!bar) return;
@@ -990,7 +1403,6 @@ function updateDisabledBar() {
   });
 }
 
-// ── Render Global view ────────────────────────────────────
 function renderGlobalView() {
   if (!compData) return;
   const all    = buildCompSeries(compData, COMP_ASSETS, compPeriod);
@@ -1005,7 +1417,6 @@ function renderGlobalView() {
   updateDisabledBar();
 }
 
-// ── Render AI view ────────────────────────────────────────
 function renderAIView() {
   if (!compData) return;
   const series = buildCompSeries(compData, AI_ASSETS, compPeriod);
@@ -1015,17 +1426,15 @@ function renderAIView() {
     { thDay:'thDayAI', thWeek:'thWeekAI', thMonth:'thMonthAI', thYear:'thYearAI' });
 }
 
-// ── Active render dispatcher ──────────────────────────────
 function renderCompViews() {
   if (compTab === 'global') renderGlobalView();
   else renderAIView();
 }
 
-// ── Main update ───────────────────────────────────────────
 async function updateComparisons() {
   if (compBusy) return;
   compBusy = true;
-  ['compLoading','compLoadingAI'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'flex'; });
+  ['compLoading','compLoadingAI'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'flex'; });
   try {
     if (!compData) compData = await fetchCompData();
     renderGlobalView();
@@ -1033,7 +1442,6 @@ async function updateComparisons() {
   } finally { compBusy = false; }
 }
 
-// ── Tab buttons ───────────────────────────────────────────
 document.querySelectorAll('.comp-tab').forEach(tab => {
   tab.addEventListener('click', function () {
     document.querySelectorAll('.comp-tab').forEach(t => t.classList.remove('active'));
@@ -1045,7 +1453,6 @@ document.querySelectorAll('.comp-tab').forEach(tab => {
   });
 });
 
-// ── Period buttons ────────────────────────────────────────
 document.querySelectorAll('.period-btn').forEach(btn => {
   btn.addEventListener('click', function () {
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
@@ -1055,19 +1462,17 @@ document.querySelectorAll('.period-btn').forEach(btn => {
   });
 });
 
-// ── Resize ────────────────────────────────────────────────
 let _compResizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(_compResizeTimer);
   _compResizeTimer = setTimeout(() => { if (compData) renderCompViews(); }, 160);
 });
 
-// ── Boot ──────────────────────────────────────────────────
 updateComparisons();
 setInterval(async () => { compData = null; await updateComparisons(); }, 300_000);
 
 /* ════════════════════════════════════════════════════════
-   NOTICIAS — RSS Multi-Feed (CoinDesk · Cointelegraph · Decrypt)
+   NOTICIAS — RSS Multi-Feed
    ════════════════════════════════════════════════════════ */
 
 const NEWS_FEEDS = [
@@ -1117,7 +1522,6 @@ function renderNewsGrid(items) {
   const grid  = document.getElementById('newsGrid');
   const updEl = document.getElementById('newsUpdated');
   if (!grid) return;
-
   grid.innerHTML = items.map(n => `
     <a class="news-card" href="${n.link}" target="_blank" rel="noopener noreferrer" style="border-top-color:${n.color}">
       <span class="news-card__src" style="color:${n.color}">${n.source}</span>
@@ -1127,22 +1531,18 @@ function renderNewsGrid(items) {
         <span class="news-card__arr">↗</span>
       </div>
     </a>`).join('');
-
   if (updEl) updEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
 async function updateNews() {
-  const grid = document.getElementById('newsGrid');
-
+  const grid    = document.getElementById('newsGrid');
   const settled = await Promise.allSettled(NEWS_FEEDS.map(fetchFeed));
   const all     = settled.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-
   if (all.length === 0) {
     if (!newsLoaded && grid)
       grid.innerHTML = '<div class="news-placeholder">No se pudieron cargar las noticias. Reintentando en 8 min…</div>';
     return;
   }
-
   newsLoaded = true;
   renderNewsGrid(all.sort((a, b) => b.date - a.date).slice(0, 6));
 }
