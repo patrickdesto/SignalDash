@@ -46,17 +46,18 @@ const ASSET_NAMES = {
   TONUSDT:  'Toncoin',      AVAXUSDT: 'Avalanche',   SUIUSDT:  'Sui',
   TAOUSDT:  'Bittensor',    DOTUSDT:  'Polkadot',    UNIUSDT:  'Uniswap',
   NEARUSDT: 'NEAR Protocol',AAVEUSDT: 'Aave',        ALGOUSDT: 'Algorand',
-  ENAUSDT:  'Ethena',       INJUSDT:  'Injective',   RNDRUSDT: 'Render',
-  FETUSDT:  'Fetch.ai'
+  ENAUSDT:  'Ethena',       INJUSDT:  'Injective',   RENDERUSDT: 'Render',
+  FETUSDT:  'Fetch.ai',     DOGEUSDT: 'Dogecoin',    TRXUSDT:  'TRON'
 };
 
 const CMC_RANKS = {
   BTCUSDT:  1,  ETHUSDT:  2,  XRPUSDT:  3,  BNBUSDT:  4,
   SOLUSDT:  5,  XLMUSDT:  6,  TONUSDT:  7,  ADAUSDT:  8,
+  DOGEUSDT: 9,  TRXUSDT:  10,
   AVAXUSDT: 11, SUIUSDT:  13, DOTUSDT:  16, LINKUSDT: 15,
   NEARUSDT: 18, AAVEUSDT: 22, UNIUSDT:  20, INJUSDT:  25,
   ALGOUSDT: 44, BCHUSDT:  17, TAOUSDT:  19, FETUSDT:  30,
-  ENAUSDT:  33, RNDRUSDT: 38
+  ENAUSDT:  33, RENDERUSDT: 38
 };
 
 const ASSET_CATS = {
@@ -80,17 +81,34 @@ const ASSET_CATS = {
   ALGOUSDT: { cat: 'L1',       cls: 'cat-l1'    },
   ENAUSDT:  { cat: 'DeFi',     cls: 'cat-defi'  },
   INJUSDT:  { cat: 'DeFi / L1',cls: 'cat-defi'  },
-  RNDRUSDT: { cat: 'AI',       cls: 'cat-ai'    },
-  FETUSDT:  { cat: 'AI',       cls: 'cat-ai'    },
+  RENDERUSDT: { cat: 'AI',       cls: 'cat-ai'    },
+  FETUSDT:    { cat: 'AI',       cls: 'cat-ai'    },
+  DOGEUSDT:   { cat: 'PoW',      cls: 'cat-pow'   },
+  TRXUSDT:    { cat: 'L1',       cls: 'cat-l1'    },
 };
 
 const COMP_ASSETS = [
   'BTCUSDT','ETHUSDT','XRPUSDT','BNBUSDT','SOLUSDT','ADAUSDT',
   'BCHUSDT','LINKUSDT','XLMUSDT','TONUSDT','AVAXUSDT','SUIUSDT',
   'TAOUSDT','DOTUSDT','UNIUSDT','NEARUSDT','AAVEUSDT','ALGOUSDT',
-  'ENAUSDT','INJUSDT','RNDRUSDT','FETUSDT'
+  'ENAUSDT','INJUSDT','RENDERUSDT','FETUSDT'
 ];
-const AI_ASSETS = ['TAOUSDT','FETUSDT','RNDRUSDT','NEARUSDT','INJUSDT'];
+const AI_ASSETS       = ['TAOUSDT','FETUSDT','RENDERUSDT','NEARUSDT','INJUSDT'];
+const CAP_EXTRA_ASSETS = ['DOGEUSDT','TRXUSDT'];
+
+const CAP_TIER_DEFS = {
+  t5:    { label: 'Top 5',   min: 1,  max: 5   },
+  t10:   { label: '6 – 10',  min: 6,  max: 10  },
+  t20:   { label: '11 – 20', min: 11, max: 20  },
+  t30:   { label: '21 – 30', min: 21, max: 30  },
+  resto: { label: 'Menores', min: 31, max: 999 },
+};
+function getCapTierAssets(tier) {
+  const { min, max } = CAP_TIER_DEFS[tier] || CAP_TIER_DEFS.t5;
+  const all = [...new Set([...COMP_ASSETS, ...CAP_EXTRA_ASSETS])];
+  return all.filter(s => { const r = CMC_RANKS[s] || 999; return r >= min && r <= max; })
+            .sort((a, b) => (CMC_RANKS[a]||999) - (CMC_RANKS[b]||999));
+}
 
 const COMP_COLORS = {
   BTCUSDT:  '#d4954a', ETHUSDT:  '#7a85c0', XRPUSDT:  '#3a9acd',
@@ -99,16 +117,16 @@ const COMP_COLORS = {
   TONUSDT:  '#2088d8', AVAXUSDT: '#c04040', SUIUSDT:  '#4a90c8',
   TAOUSDT:  '#30a090', DOTUSDT:  '#b04880', UNIUSDT:  '#b04870',
   NEARUSDT: '#24906a', AAVEUSDT: '#7850a0', ALGOUSDT: '#2898c8',
-  ENAUSDT:  '#90a838', INJUSDT:  '#2098c8', RNDRUSDT: '#d07830',
-  FETUSDT:  '#22a8c8'
+  ENAUSDT:  '#90a838', INJUSDT:  '#2098c8', RENDERUSDT: '#d07830',
+  FETUSDT:  '#22a8c8', DOGEUSDT: '#c8a030', TRXUSDT:    '#cc2233'
 };
 
 /* ══════════════════════════════════════════════════════════
    GAUGE ENGINE
    ══════════════════════════════════════════════════════════ */
 
-const CX = 100, CY = 108;
-const R_OUT = 88, R_IN = 66, R_NDL = 80, R_NDL_BASE = 12;
+const CX = 100, CY = 100;
+const R_OUT = 84, R_IN = 58, R_NDL = 76, R_NDL_BASE = 12;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function el(tag, attrs) {
@@ -205,68 +223,115 @@ function buildGauge(id) {
       <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="glow-sm-${id}" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+    <filter id="glow-sm-${id}" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <radialGradient id="hub-grad-${id}" cx="50%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#2e4055"/>
+      <stop offset="100%" stop-color="#08111c"/>
+    </radialGradient>
   `;
   svg.appendChild(defs);
 
+  // Dark background fill
   svg.appendChild(el('path', {
-    d: donutArc(R_OUT + 2, R_IN - 2, 180, 0),
-    fill: '#0a0f1a', stroke: '#1e2d3e', 'stroke-width': '1'
+    d: donutArc(R_OUT + 3, R_IN - 3, 180, 0),
+    fill: '#07111f'
   }));
 
+  // Outer border ring
+  svg.appendChild(el('path', {
+    d: donutArc(R_OUT + 3, R_OUT + 1, 180, 0),
+    fill: 'none', stroke: '#1a2d3e', 'stroke-width': '1.2'
+  }));
+
+  // Zone color segments
   ZONE_SEGS.forEach(z => {
     const a1 = rsiAngle(z.rsi0), a2 = rsiAngle(z.rsi1);
-    svg.appendChild(el('path', { d: donutArc(R_OUT, R_IN, a1, a2), fill: z.color, opacity: z.opacity }));
-  });
-
-  TICK_RSIS.forEach(rsi => {
-    const ang = rsiAngle(rsi);
-    const outer = p2c(CX, CY, R_OUT + 4, ang);
-    const inner = p2c(CX, CY, R_IN - 4, ang);
-    svg.appendChild(el('line', {
-      x1: f(outer.x), y1: f(outer.y), x2: f(inner.x), y2: f(inner.y),
-      stroke: rsi === 50 ? '#374151' : '#1e2d3e',
-      'stroke-width': rsi === 50 ? '1.5' : '1'
+    svg.appendChild(el('path', {
+      d: donutArc(R_OUT, R_IN, a1, a2),
+      fill: z.color, opacity: z.opacity + 0.05
     }));
   });
 
-  LABEL_RSIS.forEach(rsi => {
-    const ang = rsiAngle(rsi);
-    const lp = p2c(CX, CY, R_IN - 13, ang);
-    const colors = { 26: '#1d9bf0', 40: '#4a5c6e', 50: '#16c784', 60: '#4a5c6e', 74: '#ea3943' };
-    const t = el('text', {
-      x: f(lp.x), y: f(lp.y + 3.5),
-      'text-anchor': 'middle',
-      fill: colors[rsi] || '#4a5568',
-      'font-size': '8', 'font-family': 'monospace', opacity: '0.85'
-    });
-    t.textContent = rsi;
-    svg.appendChild(t);
-  });
+  // Active fill (RSI 0 → current) — updated each frame
+  svg.appendChild(el('path', {
+    class: 'g-active-arc',
+    d: '', fill: 'rgba(255,255,255,0.05)', opacity: '0'
+  }));
 
-  const ndlGlow = el('line', {
-    class: 'g-needle-glow',
-    x1: f(CX), y1: f(CY), x2: f(CX + R_NDL), y2: f(CY),
-    stroke: '#ffffff', 'stroke-width': '5', 'stroke-linecap': 'round',
-    opacity: '0.3', filter: `url(#glow-${id})`
-  });
-  svg.appendChild(ndlGlow);
-
-  const ndl = el('line', {
-    class: 'g-needle',
-    x1: f(p2c(CX, CY, R_NDL_BASE, 0).x), y1: f(CY),
-    x2: f(CX + R_NDL), y2: f(CY),
-    stroke: '#ffffff', 'stroke-width': '2.5', 'stroke-linecap': 'round',
+  // Active outer edge glow
+  svg.appendChild(el('path', {
+    class: 'g-active-stroke',
+    d: '', fill: 'none',
+    stroke: '#ffffff', 'stroke-width': '1.5', opacity: '0',
     filter: `url(#glow-sm-${id})`
-  });
-  svg.appendChild(ndl);
+  }));
 
-  svg.appendChild(el('circle', { class: 'g-center',     cx: CX, cy: CY, r: '6',  fill: '#0d1421', stroke: '#1e2d3e', 'stroke-width': '2' }));
-  svg.appendChild(el('circle', { class: 'g-center-dot', cx: CX, cy: CY, r: '4',  fill: '#4a5c6e' }));
-  svg.appendChild(el('path',   { class: 'g-active-arc', d: '', fill: 'none', stroke: '#ffffff', 'stroke-width': '0', opacity: '0' }));
+  // Tick marks
+  [0, 10, 20, 26, 30, 40, 50, 60, 70, 74, 80, 90, 100].forEach(rsi => {
+    const isMajor = [0, 26, 50, 74, 100].includes(rsi);
+    const ang   = rsiAngle(rsi);
+    const outer = p2c(CX, CY, R_OUT + 3, ang);
+    const inner = p2c(CX, CY, R_OUT - (isMajor ? 4 : 1), ang);
+    svg.appendChild(el('line', {
+      x1: f(outer.x), y1: f(outer.y), x2: f(inner.x), y2: f(inner.y),
+      stroke: isMajor ? '#2e4a62' : '#18283a',
+      'stroke-width': isMajor ? '1.5' : '0.8'
+    }));
+  });
+
+  // Needle glow
+  svg.appendChild(el('line', {
+    class: 'g-needle-glow',
+    x1: f(CX), y1: f(CY), x2: f(CX), y2: f(CY - R_NDL),
+    stroke: '#ffffff', 'stroke-width': '5', 'stroke-linecap': 'round',
+    opacity: '0.10', filter: `url(#glow-${id})`
+  }));
+
+  // Needle
+  svg.appendChild(el('line', {
+    class: 'g-needle',
+    x1: f(p2c(CX, CY, R_NDL_BASE, 270).x), y1: f(p2c(CX, CY, R_NDL_BASE, 270).y),
+    x2: f(CX), y2: f(CY - R_NDL),
+    stroke: '#c8d8e8', 'stroke-width': '1.5', 'stroke-linecap': 'round',
+    filter: `url(#glow-sm-${id})`
+  }));
+
+  // Needle tip dot
+  svg.appendChild(el('circle', {
+    class: 'g-needle-tip',
+    cx: f(CX), cy: f(CY - R_NDL), r: '2.5',
+    fill: '#ffffff', opacity: '0.85',
+    filter: `url(#glow-sm-${id})`
+  }));
+
+  // Center hub
+  svg.appendChild(el('circle', {
+    cx: CX, cy: CY, r: '10',
+    fill: `url(#hub-grad-${id})`, stroke: '#1e3248', 'stroke-width': '1.2'
+  }));
+  svg.appendChild(el('circle', {
+    class: 'g-center-dot',
+    cx: CX, cy: CY, r: '4',
+    fill: '#3a5068'
+  }));
+
+  // RSI value — large, centered inside the arc
+  const valT = el('text', {
+    class: 'g-val-text',
+    x: CX, y: CY - 22,
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle',
+    fill: '#4a6070',
+    'font-size': '28',
+    'font-family': '"JetBrains Mono",Consolas,monospace',
+    'font-weight': '700',
+    'letter-spacing': '-1'
+  });
+  valT.textContent = '—';
+  svg.appendChild(valT);
 }
 
 function renderNeedle(id, rsi, color) {
@@ -275,20 +340,27 @@ function renderNeedle(id, rsi, color) {
   const ang  = rsiAngle(rsi);
   const tip  = p2c(CX, CY, R_NDL, ang);
   const tail = p2c(CX, CY, R_NDL_BASE, (ang + 180) % 360);
-  const ndl  = svg.querySelector('.g-needle');
+
+  const ndl = svg.querySelector('.g-needle');
   if (ndl) {
     ndl.setAttribute('x1', f(tail.x)); ndl.setAttribute('y1', f(tail.y));
     ndl.setAttribute('x2', f(tip.x));  ndl.setAttribute('y2', f(tip.y));
-    ndl.setAttribute('stroke', color);
   }
   const glow = svg.querySelector('.g-needle-glow');
   if (glow) {
-    glow.setAttribute('x1', f(CX)); glow.setAttribute('y1', f(CY));
+    glow.setAttribute('x1', f(CX));    glow.setAttribute('y1', f(CY));
     glow.setAttribute('x2', f(tip.x)); glow.setAttribute('y2', f(tip.y));
     glow.setAttribute('stroke', color);
   }
   const dot = svg.querySelector('.g-center-dot');
   if (dot) dot.setAttribute('fill', color);
+
+  const tipDot = svg.querySelector('.g-needle-tip');
+  if (tipDot) {
+    tipDot.setAttribute('cx', f(tip.x));
+    tipDot.setAttribute('cy', f(tip.y));
+    tipDot.setAttribute('fill', color);
+  }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -348,6 +420,37 @@ function applyGaugeUI(tf, rsi) {
   if (szoneEl) { szoneEl.textContent = zone.label;     szoneEl.style.color = color; }
   if (ssigEl)  { ssigEl.textContent  = zone.signal;    ssigEl.style.color = color; }
   if (sbarEl)  { sbarEl.style.width  = rsi + '%';      sbarEl.style.background = color; }
+
+  // Update SVG internals: active arc fill + value text + needle tip color
+  const svgEl = document.getElementById(`gauge-${tf}`);
+  if (svgEl) {
+    const arcFill   = svgEl.querySelector('.g-active-arc');
+    const arcStroke = svgEl.querySelector('.g-active-stroke');
+    const valText   = svgEl.querySelector('.g-val-text');
+    const tipDot    = svgEl.querySelector('.g-needle-tip');
+
+    if (rsi > 0.5) {
+      const arcPath = donutArc(R_OUT, R_IN, 180, rsiAngle(Math.max(0.5, rsi)));
+      if (arcFill) {
+        arcFill.setAttribute('d', arcPath);
+        arcFill.setAttribute('fill', color + '1e');
+        arcFill.setAttribute('opacity', '1');
+      }
+      if (arcStroke) {
+        arcStroke.setAttribute('d', donutArc(R_OUT + 0.5, R_OUT - 0.5, 180, rsiAngle(Math.max(0.5, rsi))));
+        arcStroke.setAttribute('stroke', color);
+        arcStroke.setAttribute('opacity', '0.7');
+      }
+    } else {
+      if (arcFill)   arcFill.setAttribute('opacity', '0');
+      if (arcStroke) arcStroke.setAttribute('opacity', '0');
+    }
+
+    if (valText) {
+      valText.textContent = rsi.toFixed(1);
+      valText.setAttribute('fill', color);
+    }
+  }
 
   if (!switchingAsset && prevZones[tf] !== null && prevZones[tf] !== zone.label) {
     pushAlert(tf, rsi, zone, color);
@@ -961,10 +1064,17 @@ setInterval(updatePrice,   30_000);
 
 initAssetStrip();
 initGaugeTabs();
-fetchAllTickers().then(t => updateAssetStripPrices(t)).catch(() => {});
-setInterval(async () => {
-  try { updateAssetStripPrices(await fetchAllTickers()); } catch {}
-}, 30_000);
+
+async function refreshLiveTickers() {
+  try {
+    const t = await fetchAllTickers();
+    liveCompTickers = t;
+    updateAssetStripPrices(t);
+    if (compData) patchCompTablePrices(t);
+  } catch {}
+}
+refreshLiveTickers();
+setInterval(refreshLiveTickers, 10_000);
 
 setTimeout(async () => {
   await bgMonitorAssets();
@@ -1107,7 +1217,7 @@ function drawRSIIndexChart(avgSeries, dates) {
   ctx.fillStyle  = 'rgba(255,255,255,0.28)';
   ctx.textAlign  = 'center';
   ctx.font       = '9px "JetBrains Mono",Consolas,monospace';
-  const lblN = Math.min(5, tot - 1);
+  const lblN = Math.min(3, tot - 1);
   for (let li = 0; li <= lblN; li++) {
     const di = Math.round((li / lblN) * (tot - 1));
     const d  = new Date(dates[di]);
@@ -1183,17 +1293,36 @@ async function updateRSIIndex() {
    COMPARACIONES — Rendimiento Relativo Multi-Activo
    ════════════════════════════════════════════════════════ */
 
-let compData       = null;
-let compPeriod     = '1w';
-let compBusy       = false;
-let compTab        = 'global';
-let disabledGlobal = new Set();
+let compData        = null;
+let compPeriod      = '1w';
+let compBusy        = false;
+let compTab         = 'global';
+let compCapTier     = 't5';
+let compCustomDays  = null;
+let disabledGlobal  = new Set();
+let liveCompTickers = null;
 
-const PERIOD_SLICES = { '1w': 8, '1m': 31, '1y': 366 };
+function getCalendarStart(period) {
+  const now = new Date();
+  if (period === '1w') {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const dow = d.getUTCDay(); // 0=Sun,1=Mon,...,6=Sat
+    d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+    return d.getTime();
+  }
+  if (period === '1m') {
+    return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  }
+  if (period === '1y') {
+    return Date.UTC(now.getUTCFullYear(), 0, 1);
+  }
+  return null;
+}
 
 async function fetchCompData() {
   const out = {};
-  await Promise.allSettled(COMP_ASSETS.map(async sym => {
+  const allSyms = [...new Set([...COMP_ASSETS, ...CAP_EXTRA_ASSETS])];
+  await Promise.allSettled(allSyms.map(async sym => {
     try {
       const [kr, tr] = await Promise.all([
         fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=366`),
@@ -1217,19 +1346,24 @@ function compNiceTicks(min, max, n) {
 }
 
 function buildCompSeries(data, assetList, period) {
-  const sliceN = PERIOD_SLICES[period] || 31;
+  const startTs = compCustomDays !== null
+    ? Date.now() - compCustomDays * 86400000
+    : getCalendarStart(period);
   const out = [];
   for (const sym of assetList) {
     const klines = data[sym]?.klines;
     if (!klines || klines.length < 2) continue;
     const closes = klines.map(k => parseFloat(k[4]));
     const ts     = klines.map(k => k[0]);
-    const sc     = closes.slice(-sliceN);
-    const st     = ts.slice(-sliceN);
+    let si = ts.findIndex(t => t >= startTs);
+    if (si < 0) si = ts.length - 1;
+    const baseIdx = si > 0 ? si - 1 : si;
+    const sc = closes.slice(baseIdx);
+    const st = ts.slice(baseIdx);
     if (sc.length < 2) continue;
     const base = sc[0];
     const vals = sc.map(c => ((c / base) - 1) * 100);
-    out.push({ sym, color: COMP_COLORS[sym] || '#888', name: sym.replace('USDT',''), vals, ts: st, cur: vals[vals.length - 1] });
+    out.push({ sym, color: COMP_COLORS[sym] || '#888', name: sym.replace('USDT',''), fullName: ASSET_NAMES[sym] || '', vals, ts: st, cur: vals[vals.length - 1] });
   }
   return out;
 }
@@ -1264,7 +1398,7 @@ function drawCompChart(series, canvasId, loadingId) {
   const xOf = (i, tot) => pad.l + (i / (tot - 1)) * cW;
   const yOf = v => pad.t + cH - ((v - minV) / (maxV - minV)) * cH;
 
-  ctx.fillStyle = '#111927'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0b1728'; ctx.fillRect(0, 0, W, H);
 
   const ticks = compNiceTicks(minV, maxV, 6);
   ctx.font = '10px "JetBrains Mono",Consolas,monospace'; ctx.textAlign = 'right';
@@ -1272,9 +1406,9 @@ function drawCompChart(series, canvasId, loadingId) {
   for (const t of ticks) {
     const y = yOf(t);
     if (y < pad.t - 4 || y > pad.t + cH + 4) continue;
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.fillText((t >= 0 ? '+' : '') + t.toFixed(0) + '%', pad.l - 5, y + 3.5);
   }
   ctx.setLineDash([]);
@@ -1301,11 +1435,12 @@ function drawCompChart(series, canvasId, loadingId) {
   const drawOrder = [...series].sort((a, b) => a.cur - b.cur);
   for (const s of drawOrder) {
     const tot = s.vals.length;
-    ctx.beginPath(); ctx.strokeStyle = s.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.9;
+    ctx.lineJoin = 'round';
     for (let i = 0; i < tot; i++) { const x = xOf(i, tot), y = yOf(s.vals[i]); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
     ctx.stroke();
     ctx.globalAlpha = 1;
-    ctx.beginPath(); ctx.arc(xOf(tot - 1, tot), yOf(s.vals[tot - 1]), 2.5, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(xOf(tot - 1, tot), yOf(s.vals[tot - 1]), 3.5, 0, Math.PI * 2);
     ctx.fillStyle = s.color; ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -1322,10 +1457,15 @@ function drawCompLegend(allSeries, disabledSet, legendId, onToggle) {
   });
   el.innerHTML = sorted.map(s => {
     const dis = disabledSet && disabledSet.has(s.sym);
+    const clr = dis ? '#2a3d52' : s.color;
+    const fullNm = s.fullName || s.name;
     return `<div class="comp-leg-item${dis ? ' is-off' : ''}" data-sym="${s.sym}">
-      <span class="comp-leg-sw" style="background:${dis ? '#2a3d52' : s.color}"></span>
-      <span class="comp-leg-nm">${s.name}</span>
-      <span class="comp-leg-pc ${s.cur >= 0 ? 'pos' : 'neg'}">${s.cur >= 0 ? '+' : ''}${s.cur.toFixed(2)}%</span>
+      <span class="comp-leg-bar" style="background:${clr}"></span>
+      <div class="comp-leg-info">
+        <span class="comp-leg-ticker">${s.name}</span>
+        <span class="comp-leg-fullnm">${fullNm}</span>
+      </div>
+      <span class="comp-leg-pc ${s.cur >= 0 ? 'pos' : 'neg'}">${s.cur >= 0 ? '+' : ''}${s.cur.toFixed(1)}%</span>
     </div>`;
   }).join('');
   if (onToggle) {
@@ -1339,22 +1479,40 @@ function drawCompTable(data, period, activeAssets, tbodyId, thIds) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
+  const fv = p => p >= 10000 ? p.toLocaleString('en',{maximumFractionDigits:0})
+    : p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toPrecision(4);
+  const fpCell = (p, cls) => p == null
+    ? `<td class="comp-na ${cls}">—</td>`
+    : `<td class="comp-pc ${p >= 0 ? 'pos' : 'neg'} ${cls}">${p >= 0 ? '+' : ''}${p.toFixed(2)}%</td>`;
+  const rankCls = r => r.rank <= 5 ? 'rank-gold' : r.rank <= 25 ? 'rank-silver' : 'rank-bronze';
+
   const rows = [];
   for (const sym of activeAssets) {
     const { klines, ticker } = data[sym] || {};
     if (!klines || klines.length < 2) continue;
     const closes = klines.map(k => parseFloat(k[4]));
     const last   = closes[closes.length - 1];
-    const price  = parseFloat(ticker.lastPrice);
-    const pDay   = parseFloat(ticker.priceChangePercent);
-    const pWeek  = closes.length >= 8   ? ((last / closes[closes.length - 8])   - 1) * 100 : null;
-    const pMonth = closes.length >= 31  ? ((last / closes[closes.length - 31])  - 1) * 100 : null;
-    const pYear  = closes.length >= 2   ? ((last / closes[0])                   - 1) * 100 : null;
+    const liveTkr = liveCompTickers?.[sym];
+    const price  = parseFloat((liveTkr || ticker).lastPrice);
+    const calBase = (p) => {
+      const st = getCalendarStart(p);
+      const si = klines.findIndex(k => k[0] >= st);
+      if (si < 0) return null;
+      return closes[si > 0 ? si - 1 : si];
+    };
+    const bWeek  = calBase('1w');
+    const bMonth = calBase('1m');
+    const bYear  = calBase('1y');
+    const pWeek  = bWeek  != null ? ((last / bWeek)  - 1) * 100 : null;
+    const pMonth = bMonth != null ? ((last / bMonth) - 1) * 100 : null;
+    const pYear  = bYear  != null ? ((last / bYear)  - 1) * 100 : null;
     rows.push({
-      sym, name: sym.replace('USDT',''), price, pDay, pWeek, pMonth, pYear,
+      sym, name: sym.replace('USDT',''),
+      fullName: ASSET_NAMES[sym] || '',
+      price, pWeek, pMonth, pYear,
       color: COMP_COLORS[sym] || '#888',
-      rank: CMC_RANKS[sym] || 999,
-      cat:  ASSET_CATS[sym]  || { cat: '—', cls: 'cat-default' }
+      rank:  CMC_RANKS[sym]   || 999,
+      cat:   ASSET_CATS[sym]  || { cat: '—', cls: 'cat-default' }
     });
   }
 
@@ -1362,27 +1520,41 @@ function drawCompTable(data, period, activeAssets, tbodyId, thIds) {
   const sk = sortMap[period] || 'pMonth';
   rows.sort((a, b) => (b[sk] ?? -Infinity) - (a[sk] ?? -Infinity));
 
-  const fp = p => p == null ? '<td class="comp-na">—</td>'
-    : `<td class="comp-pc ${p >= 0 ? 'pos' : 'neg'}">${p >= 0 ? '+' : ''}${p.toFixed(2)}%</td>`;
-
-  const fv = p => p >= 10000 ? p.toLocaleString('en',{maximumFractionDigits:0})
-    : p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toPrecision(4);
-
-  const rankCls = r => r.rank <= 5 ? 'rank-gold' : r.rank <= 25 ? 'rank-silver' : 'rank-bronze';
-
-  tbody.innerHTML = rows.map((r, i) => `<tr class="${i % 2 ? 'alt' : ''}">
-    <td><span class="rank-badge ${rankCls(r)}">${r.rank}</span></td>
-    <td class="td-asset"><div class="comp-asset-cell"><span class="comp-sw" style="background:${r.color}"></span><span class="comp-nm">${r.name}</span></div></td>
+  tbody.innerHTML = rows.map((r, i) => `<tr class="${i % 2 ? 'alt' : ''}" data-sym="${r.sym}">
+    <td class="td-rank"><span class="rank-badge ${rankCls(r)}">${r.rank}</span></td>
+    <td class="td-asset"><div class="comp-asset-cell">
+      <span class="comp-sw" style="background:${r.color};box-shadow:0 0 6px ${r.color}55"></span>
+      <div class="comp-asset-info">
+        <span class="comp-nm">${r.name}</span>
+        <span class="comp-full-nm">${r.fullName}</span>
+      </div>
+    </div></td>
     <td class="td-cat"><span class="cat-badge ${r.cat.cls}">${r.cat.cat}</span></td>
-    <td class="comp-price font-mono">$${fv(r.price)}</td>
-    ${fp(r.pDay)}${fp(r.pWeek)}${fp(r.pMonth)}${fp(r.pYear)}
+    <td class="comp-price font-mono td-price">$${fv(r.price)}</td>
+    ${fpCell(r.pWeek, 'td-week')}${fpCell(r.pMonth, 'td-month')}${fpCell(r.pYear, 'td-year')}
   </tr>`).join('');
 
   if (thIds) {
-    [thIds.thDay,thIds.thWeek,thIds.thMonth,thIds.thYear].forEach(id => document.getElementById(id)?.classList.remove('sorted'));
+    [thIds.thWeek,thIds.thMonth,thIds.thYear].forEach(id => document.getElementById(id)?.classList.remove('sorted'));
     const activeThId = sk === 'pWeek' ? thIds.thWeek : sk === 'pMonth' ? thIds.thMonth : thIds.thYear;
     document.getElementById(activeThId)?.classList.add('sorted');
   }
+}
+
+function patchCompTablePrices(tickers) {
+  const fv = p => p >= 10000 ? p.toLocaleString('en',{maximumFractionDigits:0})
+    : p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toPrecision(4);
+  ['compTbody', 'compTbodyAI'].forEach(id => {
+    const tbody = document.getElementById(id);
+    if (!tbody) return;
+    tbody.querySelectorAll('tr[data-sym]').forEach(row => {
+      const t = tickers[row.dataset.sym];
+      if (!t) return;
+      const price = parseFloat(t.lastPrice);
+      const pc = row.querySelector('.td-price');
+      if (pc) pc.textContent = '$' + fv(price);
+    });
+  });
 }
 
 function updateDisabledBar() {
@@ -1413,7 +1585,7 @@ function renderGlobalView() {
     renderGlobalView();
   });
   drawCompTable(compData, compPeriod, COMP_ASSETS.filter(s => !disabledGlobal.has(s)), 'compTbody',
-    { thDay:'thDay', thWeek:'thWeek', thMonth:'thMonth', thYear:'thYear' });
+    { thWeek:'thWeek', thMonth:'thMonth', thYear:'thYear' });
   updateDisabledBar();
 }
 
@@ -1423,22 +1595,37 @@ function renderAIView() {
   drawCompChart(series, 'perfChartAI', 'compLoadingAI');
   drawCompLegend(series, null, 'compLegendAI', null);
   drawCompTable(compData, compPeriod, AI_ASSETS, 'compTbodyAI',
-    { thDay:'thDayAI', thWeek:'thWeekAI', thMonth:'thMonthAI', thYear:'thYearAI' });
+    { thWeek:'thWeekAI', thMonth:'thMonthAI', thYear:'thYearAI' });
+}
+
+function renderCapView() {
+  if (!compData) return;
+  const assets = getCapTierAssets(compCapTier);
+  const series = buildCompSeries(compData, assets, compPeriod);
+  const def    = CAP_TIER_DEFS[compCapTier];
+  drawCompChart(series, 'perfChartCap', 'compLoadingCap');
+  drawCompLegend(series, null, 'compLegendCap', null);
+  drawCompTable(compData, compPeriod, assets, 'compTbodyCap',
+    { thWeek:'thWeekCap', thMonth:'thMonthCap', thYear:'thYearCap' });
+  const sub = document.getElementById('capTierSub');
+  if (sub && def) sub.textContent = `${def.label} · por capitalización de mercado`;
 }
 
 function renderCompViews() {
-  if (compTab === 'global') renderGlobalView();
-  else renderAIView();
+  if (compTab === 'global')     renderGlobalView();
+  else if (compTab === 'ai')    renderAIView();
+  else if (compTab === 'cap')   renderCapView();
 }
 
 async function updateComparisons() {
   if (compBusy) return;
   compBusy = true;
-  ['compLoading','compLoadingAI'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'flex'; });
+  ['compLoading','compLoadingAI','compLoadingCap'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'flex'; });
   try {
     if (!compData) compData = await fetchCompData();
     renderGlobalView();
     renderAIView();
+    renderCapView();
   } finally { compBusy = false; }
 }
 
@@ -1449,18 +1636,79 @@ document.querySelectorAll('.comp-tab').forEach(tab => {
     compTab = this.dataset.tab;
     document.getElementById('view-global').style.display = compTab === 'global' ? '' : 'none';
     document.getElementById('view-ai').style.display     = compTab === 'ai'     ? '' : 'none';
+    document.getElementById('view-cap').style.display    = compTab === 'cap'    ? '' : 'none';
     if (compData) setTimeout(() => renderCompViews(), 50);
   });
 });
 
-document.querySelectorAll('.period-btn').forEach(btn => {
+document.querySelectorAll('.tier-btn').forEach(btn => {
   btn.addEventListener('click', function () {
-    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tier-btn').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    compPeriod = this.dataset.period;
-    if (compData) renderCompViews();
+    compCapTier = this.dataset.tier;
+    if (compData) renderCapView();
   });
 });
+
+(function initRangeSlider() {
+  const slider = document.getElementById('compRangeSlider');
+  const label  = document.getElementById('compRangeLabel');
+  const MESES  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const now    = new Date();
+
+  function updateLabel(p) {
+    if (!label) return;
+    if (compCustomDays === null) {
+      const period = p || compPeriod;
+      if (period === '1w') label.textContent = 'Semana actual';
+      else if (period === '1m') label.textContent = MESES[now.getMonth()] + ' ' + now.getFullYear();
+      else label.textContent = 'Año ' + now.getFullYear();
+    } else {
+      label.textContent = 'Últimos ' + compCustomDays + ' días';
+    }
+  }
+
+  if (slider) {
+    slider.addEventListener('input', function () {
+      compCustomDays = parseInt(this.value);
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      updateLabel();
+      if (compData) renderCompViews();
+    });
+  }
+
+  // Single consolidated period-btn handler
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      compPeriod     = this.dataset.period;
+      compCustomDays = null;
+      if (slider) slider.value = compPeriod === '1w' ? 7 : compPeriod === '1m' ? 30 : 365;
+      updateLabel(compPeriod);
+      if (compData) renderCompViews();
+    });
+  });
+
+  updateLabel();
+})();
+
+(function initPeriodLabels() {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const MESES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const now  = new Date();
+  const mes  = MESES[now.getMonth()];
+  const mesS = MESES_S[now.getMonth()];
+  const yr   = now.getFullYear();
+
+  document.querySelectorAll('.period-btn[data-period="1w"]').forEach(b => b.textContent = 'Semana');
+  document.querySelectorAll('.period-btn[data-period="1m"]').forEach(b => b.textContent = mes);
+  document.querySelectorAll('.period-btn[data-period="1y"]').forEach(b => b.textContent = yr);
+
+  ['thWeek','thWeekAI','thWeekCap'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = 'Sem.'; });
+  ['thMonth','thMonthAI','thMonthCap'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = mesS; });
+  ['thYear','thYearAI','thYearCap'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = yr; });
+})();
 
 let _compResizeTimer;
 window.addEventListener('resize', () => {

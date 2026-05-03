@@ -94,43 +94,47 @@
       <div class="gauges-grid">
 
         <div class="gauge-card" id="card-15m">
-          <div class="gauge-tf-badge">15M</div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-15m" aria-label="RSI 15 minutos"></svg>
+          <div class="gauge-card__head">
+            <span class="gauge-tf-badge">15M</span>
+            <span class="gauge-delta font-mono" id="delta-15m"></span>
           </div>
-          <div class="gauge-value font-mono" id="val-15m">—</div>
-          <div class="gauge-zone-label" id="lbl-15m">Sin datos</div>
-          <div class="gauge-delta" id="delta-15m"></div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-15m" aria-label="RSI 15 minutos"></svg>
+          </div>
+          <div class="gauge-zone-label" id="lbl-15m">—</div>
         </div>
 
         <div class="gauge-card" id="card-1h">
-          <div class="gauge-tf-badge">1H</div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-1h" aria-label="RSI 1 hora"></svg>
+          <div class="gauge-card__head">
+            <span class="gauge-tf-badge">1H</span>
+            <span class="gauge-delta font-mono" id="delta-1h"></span>
           </div>
-          <div class="gauge-value font-mono" id="val-1h">—</div>
-          <div class="gauge-zone-label" id="lbl-1h">Sin datos</div>
-          <div class="gauge-delta" id="delta-1h"></div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-1h" aria-label="RSI 1 hora"></svg>
+          </div>
+          <div class="gauge-zone-label" id="lbl-1h">—</div>
         </div>
 
         <div class="gauge-card" id="card-4h">
-          <div class="gauge-tf-badge">4H</div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-4h" aria-label="RSI 4 horas"></svg>
+          <div class="gauge-card__head">
+            <span class="gauge-tf-badge">4H</span>
+            <span class="gauge-delta font-mono" id="delta-4h"></span>
           </div>
-          <div class="gauge-value font-mono" id="val-4h">—</div>
-          <div class="gauge-zone-label" id="lbl-4h">Sin datos</div>
-          <div class="gauge-delta" id="delta-4h"></div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-4h" aria-label="RSI 4 horas"></svg>
+          </div>
+          <div class="gauge-zone-label" id="lbl-4h">—</div>
         </div>
 
         <div class="gauge-card" id="card-1d">
-          <div class="gauge-tf-badge">1D</div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 115" id="gauge-1d" aria-label="RSI 1 día"></svg>
+          <div class="gauge-card__head">
+            <span class="gauge-tf-badge">1D</span>
+            <span class="gauge-delta font-mono" id="delta-1d"></span>
           </div>
-          <div class="gauge-value font-mono" id="val-1d">—</div>
-          <div class="gauge-zone-label" id="lbl-1d">Sin datos</div>
-          <div class="gauge-delta" id="delta-1d"></div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-1d" aria-label="RSI 1 día"></svg>
+          </div>
+          <div class="gauge-zone-label" id="lbl-1d">—</div>
         </div>
 
       </div>
@@ -431,22 +435,38 @@
       <div class="comp-tabs">
         <button class="comp-tab active" data-tab="global">Vista Global</button>
         <button class="comp-tab" data-tab="ai">✦ Crypto AI</button>
+        <button class="comp-tab" data-tab="cap">◈ Ranking Cap.</button>
       </div>
-      <div class="period-sel">
-        <button class="period-btn active" data-period="1w">1 Semana</button>
-        <button class="period-btn" data-period="1m">1 Mes</button>
-        <button class="period-btn" data-period="1y">1 Año</button>
+      <div class="comp-topbar__right">
+        <span class="comp-live-badge"><span class="comp-live-dot"></span>Live · 10s</span>
+        <div class="period-sel">
+          <button class="period-btn active" data-period="1w">Semana</button>
+          <button class="period-btn" data-period="1m">Mes</button>
+          <button class="period-btn" data-period="1y">Año</button>
+        </div>
+        <div class="comp-range-wrap">
+          <input type="range" id="compRangeSlider" class="comp-range-slider" min="7" max="365" value="7" step="1">
+          <span class="comp-range-label" id="compRangeLabel">—</span>
+        </div>
       </div>
     </div>
 
     <!-- Vista Global -->
     <div class="comp-view" id="view-global">
       <div class="comp-chart-card">
-        <div class="comp-chart-wrap">
-          <canvas id="perfChart"></canvas>
-          <div class="comp-loading" id="compLoading">Cargando datos de mercado…</div>
+        <div class="comp-chart-hdr">
+          <div class="comp-chart-hdr__left">
+            <span class="comp-chart-title">◈ Rendimiento Relativo</span>
+            <span class="comp-chart-sub">normalizado al inicio del período · base = 0%</span>
+          </div>
         </div>
-        <div class="comp-legend" id="compLegend"></div>
+        <div class="comp-chart-body">
+          <div class="comp-chart-wrap">
+            <canvas id="perfChart"></canvas>
+            <div class="comp-loading" id="compLoading">Cargando datos de mercado…</div>
+          </div>
+          <div class="comp-legend" id="compLegend"></div>
+        </div>
       </div>
       <div class="comp-disabled-bar" id="disabledBar"></div>
       <div class="comp-table-card">
@@ -455,12 +475,11 @@
             <tr>
               <th class="th-rank">#</th>
               <th class="th-asset">Activo</th>
-              <th class="th-cat">Categoría</th>
-              <th>Precio</th>
-              <th id="thDay">% Día</th>
-              <th id="thWeek">% Semana</th>
-              <th id="thMonth">% Mes</th>
-              <th id="thYear">% Año</th>
+              <th class="th-cat">Cat.</th>
+              <th class="th-price">Precio</th>
+              <th id="thWeek">7D</th>
+              <th id="thMonth">30D</th>
+              <th id="thYear">1A</th>
             </tr>
           </thead>
           <tbody id="compTbody"></tbody>
@@ -471,11 +490,19 @@
     <!-- Crypto AI -->
     <div class="comp-view" id="view-ai" style="display:none">
       <div class="comp-chart-card">
-        <div class="comp-chart-wrap">
-          <canvas id="perfChartAI"></canvas>
-          <div class="comp-loading" id="compLoadingAI">Cargando datos…</div>
+        <div class="comp-chart-hdr">
+          <div class="comp-chart-hdr__left">
+            <span class="comp-chart-title">◈ Rendimiento · Sector AI</span>
+            <span class="comp-chart-sub">normalizado al inicio del período · base = 0%</span>
+          </div>
         </div>
-        <div class="comp-legend" id="compLegendAI"></div>
+        <div class="comp-chart-body">
+          <div class="comp-chart-wrap">
+            <canvas id="perfChartAI"></canvas>
+            <div class="comp-loading" id="compLoadingAI">Cargando datos…</div>
+          </div>
+          <div class="comp-legend" id="compLegendAI"></div>
+        </div>
       </div>
       <div class="comp-table-card">
         <table class="comp-table">
@@ -483,15 +510,57 @@
             <tr>
               <th class="th-rank">#</th>
               <th class="th-asset">Activo</th>
-              <th class="th-cat">Categoría</th>
-              <th>Precio</th>
-              <th id="thDayAI">% Día</th>
-              <th id="thWeekAI">% Semana</th>
-              <th id="thMonthAI">% Mes</th>
-              <th id="thYearAI">% Año</th>
+              <th class="th-cat">Cat.</th>
+              <th class="th-price">Precio</th>
+              <th id="thWeekAI">7D</th>
+              <th id="thMonthAI">30D</th>
+              <th id="thYearAI">1A</th>
             </tr>
           </thead>
           <tbody id="compTbodyAI"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Ranking Cap. -->
+    <div class="comp-view" id="view-cap" style="display:none">
+      <div class="cap-tier-bar">
+        <span class="cap-tier-label">Tier:</span>
+        <button class="tier-btn active" data-tier="t5">Top 5</button>
+        <button class="tier-btn" data-tier="t10">6 – 10</button>
+        <button class="tier-btn" data-tier="t20">11 – 20</button>
+        <button class="tier-btn" data-tier="t30">21 – 30</button>
+        <button class="tier-btn" data-tier="resto">Menores</button>
+      </div>
+      <div class="comp-chart-card">
+        <div class="comp-chart-hdr">
+          <div class="comp-chart-hdr__left">
+            <span class="comp-chart-title">◈ Rendimiento por Capitalización</span>
+            <span class="comp-chart-sub" id="capTierSub">Top 5 · por capitalización de mercado</span>
+          </div>
+        </div>
+        <div class="comp-chart-body">
+          <div class="comp-chart-wrap">
+            <canvas id="perfChartCap"></canvas>
+            <div class="comp-loading" id="compLoadingCap">Cargando datos…</div>
+          </div>
+          <div class="comp-legend" id="compLegendCap"></div>
+        </div>
+      </div>
+      <div class="comp-table-card">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th class="th-rank">#</th>
+              <th class="th-asset">Activo</th>
+              <th class="th-cat">Cat.</th>
+              <th class="th-price">Precio</th>
+              <th id="thWeekCap">Sem.</th>
+              <th id="thMonthCap">Mes</th>
+              <th id="thYearCap">Año</th>
+            </tr>
+          </thead>
+          <tbody id="compTbodyCap"></tbody>
         </table>
       </div>
     </div>
