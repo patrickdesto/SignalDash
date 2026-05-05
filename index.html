@@ -436,6 +436,7 @@
         <button class="comp-tab active" data-tab="global">Vista Global</button>
         <button class="comp-tab" data-tab="ai">✦ Crypto AI</button>
         <button class="comp-tab" data-tab="cap">◈ Ranking Cap.</button>
+        <button class="comp-tab" data-tab="vol">▦ Volumen</button>
       </div>
       <div class="comp-topbar__right">
         <span class="comp-live-badge"><span class="comp-live-dot"></span>Live · 10s</span>
@@ -562,6 +563,40 @@
           </thead>
           <tbody id="compTbodyCap"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Volumen BTC -->
+    <div class="comp-view" id="view-vol" style="display:none">
+      <div class="vol-header-row">
+        <div class="vol-stat-card">
+          <span class="vol-stat-label">Vol. Hoy vs MM<span id="volMaPeriodLabel">20</span>D</span>
+          <span class="vol-stat-value" id="volPctValue">—</span>
+          <span class="vol-stat-sub" id="volPctSub">calculando…</span>
+        </div>
+        <div class="vol-ma-control">
+          <span class="vol-ma-title">Período del Promedio Móvil</span>
+          <div class="vol-slider-row">
+            <span class="vol-slider-end">15D</span>
+            <input type="range" id="volMaSlider" class="comp-range-slider vol-ma-slider" min="15" max="30" value="20" step="1">
+            <span class="vol-slider-end">30D</span>
+            <span class="vol-ma-days" id="volMaDays">20 días</span>
+          </div>
+        </div>
+      </div>
+      <div class="comp-chart-card">
+        <div class="comp-chart-hdr">
+          <div class="comp-chart-hdr__left">
+            <span class="comp-chart-title">▦ Volumen Diario · BTCUSDT · Últimos 60 días</span>
+            <span class="comp-chart-sub">verde = sobre el promedio móvil · rojo = bajo el promedio móvil · línea amarilla = MA</span>
+          </div>
+        </div>
+        <div class="comp-chart-body vol-chart-body">
+          <div class="comp-chart-wrap">
+            <canvas id="volChart"></canvas>
+            <div class="comp-loading" id="volLoading">Cargando volumen BTC…</div>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -1615,6 +1615,7 @@ function renderCompViews() {
   if (compTab === 'global')     renderGlobalView();
   else if (compTab === 'ai')    renderAIView();
   else if (compTab === 'cap')   renderCapView();
+  else if (compTab === 'vol')   { if (volData) renderVolumeChart(); }
 }
 
 async function updateComparisons() {
@@ -1637,7 +1638,9 @@ document.querySelectorAll('.comp-tab').forEach(tab => {
     document.getElementById('view-global').style.display = compTab === 'global' ? '' : 'none';
     document.getElementById('view-ai').style.display     = compTab === 'ai'     ? '' : 'none';
     document.getElementById('view-cap').style.display    = compTab === 'cap'    ? '' : 'none';
-    if (compData) setTimeout(() => renderCompViews(), 50);
+    document.getElementById('view-vol').style.display    = compTab === 'vol'    ? '' : 'none';
+    if (compTab === 'vol') setTimeout(() => updateVolumeView(), 50);
+    else if (compData) setTimeout(() => renderCompViews(), 50);
   });
 });
 
@@ -1713,11 +1716,210 @@ document.querySelectorAll('.tier-btn').forEach(btn => {
 let _compResizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(_compResizeTimer);
-  _compResizeTimer = setTimeout(() => { if (compData) renderCompViews(); }, 160);
+  _compResizeTimer = setTimeout(() => {
+    if (compTab === 'vol') { if (volData) renderVolumeChart(); }
+    else if (compData) renderCompViews();
+  }, 160);
 });
 
 updateComparisons();
 setInterval(async () => { compData = null; await updateComparisons(); }, 300_000);
+
+/* ════════════════════════════════════════════════════════
+   VOLUMEN BTC — Gráfico de Barras con Promedio Móvil
+   ════════════════════════════════════════════════════════ */
+
+let volData     = null;
+let volMaPeriod = 20;
+let volBusy     = false;
+
+async function fetchBTCVolumeData() {
+  const r = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=90');
+  if (!r.ok) throw new Error('vol fetch failed');
+  return await r.json();
+}
+
+function calcVolSMA(arr, period, idx) {
+  if (idx < period - 1) return null;
+  let sum = 0;
+  for (let i = idx - period + 1; i <= idx; i++) sum += arr[i];
+  return sum / period;
+}
+
+async function updateVolumeView() {
+  if (volBusy) return;
+  volBusy = true;
+  const loading = document.getElementById('volLoading');
+  if (loading) loading.style.display = 'flex';
+  try {
+    if (!volData) volData = await fetchBTCVolumeData();
+    renderVolumeChart();
+  } catch (e) {
+    console.error('vol fetch error:', e);
+  } finally {
+    volBusy = false;
+    const l = document.getElementById('volLoading');
+    if (l) l.style.display = 'none';
+  }
+}
+
+function renderVolumeChart() {
+  if (!volData) return;
+
+  // Use last 60 of the fetched 90 days; extra days provide MA context at the start
+  const raw       = volData.slice(-60);
+  const allVols   = volData.map(k => parseFloat(k[7]));   // quote volume (USDT)
+  const vols      = raw.map(k => parseFloat(k[7]));
+  const dates     = raw.map(k => k[0]);
+  const startIdx  = volData.length - 60;
+
+  // Compute MA using full context so day 0 of the 60-day window has a valid MA
+  const mas = vols.map((_, i) => calcVolSMA(allVols, volMaPeriod, startIdx + i));
+
+  // Update the large % indicator
+  const todayVol = vols[vols.length - 1];
+  const todayMa  = mas[mas.length - 1];
+  const pct      = todayMa ? ((todayVol - todayMa) / todayMa * 100) : 0;
+
+  const pctEl        = document.getElementById('volPctValue');
+  const subEl        = document.getElementById('volPctSub');
+  const maDaysEl     = document.getElementById('volMaDays');
+  const maPeriodLbl  = document.getElementById('volMaPeriodLabel');
+
+  if (pctEl) {
+    pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+    pctEl.className   = 'vol-stat-value ' + (pct >= 0 ? 'vol-above' : 'vol-below');
+  }
+  if (subEl && todayMa) {
+    const fmtB = v => v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : (v / 1e6).toFixed(0) + 'M';
+    subEl.textContent = `Hoy: $${fmtB(todayVol)}  ·  MM: $${fmtB(todayMa)}`;
+  }
+  if (maDaysEl) maDaysEl.textContent = volMaPeriod + ' días';
+  if (maPeriodLbl) maPeriodLbl.textContent = volMaPeriod;
+
+  drawVolumeChart(vols, dates, mas);
+}
+
+function drawVolumeChart(vols, dates, mas) {
+  const canvas = document.getElementById('volChart');
+  if (!canvas) return;
+
+  const dpr  = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W    = Math.max(Math.floor(rect.width), 300);
+  const H    = Math.max(Math.floor(rect.height), 200);
+  canvas.width  = W * dpr;  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#0b1728';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad   = { t: 28, b: 46, l: 70, r: 18 };
+  const cW    = W - pad.l - pad.r;
+  const cH    = H - pad.t - pad.b;
+  const n     = vols.length;
+  const maxV  = Math.max(...vols) * 1.08;
+  const baseY = pad.t + cH;
+  const xOf   = i => pad.l + (i + 0.5) * (cW / n);
+  const yOf   = v => pad.t + cH - (v / maxV) * cH;
+
+  // Grid + Y-axis labels
+  const gridN = 4;
+  ctx.font      = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign = 'right';
+  ctx.setLineDash([3, 6]);
+  ctx.lineWidth = 1;
+  for (let g = 1; g <= gridN; g++) {
+    const v = maxV * g / gridN;
+    const y = yOf(v);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    const lbl = v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : (v / 1e6).toFixed(0) + 'M';
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillText(lbl, pad.l - 6, y + 3);
+  }
+  ctx.setLineDash([]);
+
+  // Baseline
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, baseY); ctx.lineTo(W - pad.r, baseY); ctx.stroke();
+
+  // Bars
+  const barW = Math.max(2, (cW / n) * 0.72);
+  vols.forEach((v, i) => {
+    const ma    = mas[i];
+    const above = ma !== null ? v >= ma : true;
+    const x     = xOf(i) - barW / 2;
+    const y     = yOf(v);
+    const bH    = baseY - y;
+    ctx.fillStyle   = above ? 'rgba(34,197,94,0.70)'   : 'rgba(239,68,68,0.70)';
+    ctx.strokeStyle = above ? 'rgba(74,222,128,0.85)'  : 'rgba(252,165,165,0.85)';
+    ctx.lineWidth   = 0.5;
+    ctx.fillRect(x, y, barW, bH);
+    ctx.strokeRect(x, y, barW, bH);
+  });
+
+  // MA line
+  ctx.beginPath();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth   = 2;
+  ctx.shadowColor = 'rgba(245,158,11,0.5)';
+  ctx.shadowBlur  = 6;
+  let maStarted   = false;
+  mas.forEach((ma, i) => {
+    if (ma === null) return;
+    const x = xOf(i), y = yOf(ma);
+    if (!maStarted) { ctx.moveTo(x, y); maStarted = true; }
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // X-axis date labels
+  ctx.fillStyle  = 'rgba(255,255,255,0.3)';
+  ctx.font       = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign  = 'center';
+  const step     = Math.max(1, Math.floor(n / 8));
+  for (let i = 0; i < n - 3; i += step) {
+    const d = new Date(dates[i]);
+    ctx.fillText(d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), xOf(i), baseY + 16);
+  }
+  // Always show the last date aligned right
+  ctx.textAlign = 'right';
+  const dLast   = new Date(dates[n - 1]);
+  ctx.fillText(dLast.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), xOf(n - 1) + barW / 2, baseY + 16);
+
+  // MA legend line in top-left of chart area
+  const lgX = pad.l + 6, lgY = pad.t + 14;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth   = 2;
+  ctx.beginPath(); ctx.moveTo(lgX, lgY); ctx.lineTo(lgX + 18, lgY); ctx.stroke();
+  ctx.fillStyle  = 'rgba(255,255,255,0.55)';
+  ctx.font       = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign  = 'left';
+  ctx.fillText('MM' + volMaPeriod, lgX + 22, lgY + 4);
+}
+
+// MA period slider
+(function initVolMaSlider() {
+  const slider = document.getElementById('volMaSlider');
+  if (!slider) return;
+  slider.addEventListener('input', function () {
+    volMaPeriod = parseInt(this.value);
+    const daysEl = document.getElementById('volMaDays');
+    if (daysEl) daysEl.textContent = volMaPeriod + ' días';
+    if (volData) renderVolumeChart();
+  });
+})();
+
+updateVolumeView();
+setInterval(() => { volData = null; updateVolumeView(); }, 300_000);
 
 /* ════════════════════════════════════════════════════════
    NOTICIAS — RSS Multi-Feed
