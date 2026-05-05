@@ -22,6 +22,7 @@
     </div>
     <nav class="header__nav">
       <span class="nav-item active" data-section="sec-dashboard">Dashboard</span>
+      <span class="nav-item" data-section="sec-graficos">Gráficos</span>
       <span class="nav-item" data-section="sec-comparaciones">Comparaciones</span>
       <span class="nav-item" data-section="sec-noticias">Noticias</span>
       <span class="nav-item" data-section="sec-alertas">Alertas</span>
@@ -388,6 +389,85 @@
     </section>
 
   </div><!-- /sec-dashboard -->
+
+  <!-- GRÁFICOS MULTI-TF -->
+  <section class="charts-section page-section sec-hidden" id="sec-graficos">
+    <div class="charts-hdr">
+      <span class="charts-title">◈ Precio + EMAs · Multi-Timeframe</span>
+      <span class="charts-sym font-mono" id="chartsSym">BTC/USDT</span>
+    </div>
+    <div class="charts-grid">
+
+      <div class="chart-card">
+        <div class="chart-card-hdr">
+          <span class="chart-tf-badge">15M</span>
+          <span class="chart-price font-mono" id="chartPrice-15m">—</span>
+          <div class="chart-ema-legend">
+            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartCanvas-15m"></canvas>
+          <div class="chart-loading" id="chartLoad-15m">Cargando…</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card-hdr">
+          <span class="chart-tf-badge">1H</span>
+          <span class="chart-price font-mono" id="chartPrice-1h">—</span>
+          <div class="chart-ema-legend">
+            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartCanvas-1h"></canvas>
+          <div class="chart-loading" id="chartLoad-1h">Cargando…</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card-hdr">
+          <span class="chart-tf-badge">4H</span>
+          <span class="chart-price font-mono" id="chartPrice-4h">—</span>
+          <div class="chart-ema-legend">
+            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartCanvas-4h"></canvas>
+          <div class="chart-loading" id="chartLoad-4h">Cargando…</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-card-hdr">
+          <span class="chart-tf-badge">1D</span>
+          <span class="chart-price font-mono" id="chartPrice-1d">—</span>
+          <div class="chart-ema-legend">
+            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartCanvas-1d"></canvas>
+          <div class="chart-loading" id="chartLoad-1d">Cargando…</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
 
   <!-- ALERTAS -->
   <section class="alerts-section page-section sec-hidden" id="sec-alertas">

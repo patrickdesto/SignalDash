@@ -1325,6 +1325,109 @@ body {
 }
 .comp-na { color: var(--text-muted); font-size: 0.75rem; }
 
+/* ── Gráficos Multi-TF ── */
+.charts-section {
+  margin: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.charts-hdr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.charts-title {
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.charts-sym {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-card);
+}
+.chart-card-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card-alt);
+  flex-wrap: wrap;
+}
+.chart-tf-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.chart-price {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.chart-ema-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.cleg-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.cleg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.chart-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  overflow: hidden;
+}
+.chart-canvas-wrap canvas { display: block; }
+.chart-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13,20,33,0.9);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
 /* ── Volumen BTC ── */
 .vol-header-row {
   display: flex;
@@ -1425,6 +1528,9 @@ body {
   .news-grid   { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {
+  .charts-grid   { grid-template-columns: 1fr; }
+  .charts-section { margin: 0 14px 16px; }
+  .chart-ema-legend { display: none; }
   .header { padding: 0 14px; height: 52px; }
   .header__nav { display: none; }
   .market-stats-bar { padding: 0 14px; }

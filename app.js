@@ -18,6 +18,11 @@ function showSection(id) {
   if (id === 'sec-comparaciones' && typeof compData !== 'undefined' && compData) {
     setTimeout(() => renderCompViews(), 60);
   }
+  if (id === 'sec-graficos') {
+    setTimeout(() => {
+      ['15m','1h','4h','1d'].forEach(tf => { const d = chartsData[tf]; if (d) renderTFChart(tf, d.closes, d.times); });
+    }, 60);
+  }
 }
 
 document.querySelectorAll('.nav-item[data-section]').forEach(item => {
@@ -958,7 +963,7 @@ async function selectAsset(sym) {
   setActiveGaugeTab(sym);
 
   try {
-    await Promise.all([updateAllData(), updatePrice()]);
+    await Promise.all([updateAllData(), updatePrice(), updateMultiTFCharts()]);
   } finally {
     switchingAsset = false;
   }
@@ -1920,6 +1925,174 @@ function drawVolumeChart(vols, dates, mas) {
 
 updateVolumeView();
 setInterval(() => { volData = null; updateVolumeView(); }, 300_000);
+
+/* ════════════════════════════════════════════════════════
+   GRÁFICOS MULTI-TF — Precio + EMAs (20, 50, 100, 200)
+   ════════════════════════════════════════════════════════ */
+
+const CHART_DISPLAY_BARS = 120;
+let chartsData = {};
+let chartsBusy = false;
+
+async function fetchKlinesWithTS(tf) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=${SYMBOL}&interval=${TF_INTERVAL[tf]}&limit=250`;
+  const r   = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const raw = await r.json();
+  return { closes: raw.map(k => parseFloat(k[4])), times: raw.map(k => k[0]) };
+}
+
+function calcEMAArray(closes, period) {
+  const out  = [];
+  const mult = 2 / (period + 1);
+  let ema    = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period - 1) { out.push(null); continue; }
+    if (i === period - 1) { out.push(ema); continue; }
+    ema = closes[i] * mult + ema * (1 - mult);
+    out.push(ema);
+  }
+  return out;
+}
+
+async function updateMultiTFCharts() {
+  if (chartsBusy) return;
+  chartsBusy = true;
+  ['15m','1h','4h','1d'].forEach(tf => { const el = document.getElementById(`chartLoad-${tf}`); if (el) el.style.display = 'flex'; });
+  try {
+    const tfs     = ['15m','1h','4h','1d'];
+    const results = await Promise.allSettled(tfs.map(async tf => ({ tf, ...(await fetchKlinesWithTS(tf)) })));
+    const symEl   = document.getElementById('chartsSym');
+    if (symEl) symEl.textContent = SYMBOL.replace('USDT', '') + '/USDT';
+    results.forEach(res => {
+      if (res.status !== 'fulfilled') return;
+      const { tf, closes, times } = res.value;
+      chartsData[tf] = { closes, times };
+      renderTFChart(tf, closes, times);
+    });
+  } finally {
+    chartsBusy = false;
+  }
+}
+
+function renderTFChart(tf, closes, times) {
+  const n    = Math.min(CHART_DISPLAY_BARS, closes.length);
+  const sl   = arr => arr.slice(-n);
+  const ema20  = calcEMAArray(closes, 20);
+  const ema50  = calcEMAArray(closes, 50);
+  const ema100 = calcEMAArray(closes, 100);
+  const ema200 = calcEMAArray(closes, 200);
+  drawPriceEMAChart(`chartCanvas-${tf}`, sl(closes), sl(times), sl(ema20), sl(ema50), sl(ema100), sl(ema200), tf);
+  const priceEl = document.getElementById(`chartPrice-${tf}`);
+  if (priceEl) priceEl.textContent = formatPrice(closes[closes.length - 1]);
+  const loadEl  = document.getElementById(`chartLoad-${tf}`);
+  if (loadEl) loadEl.style.display = 'none';
+}
+
+function drawPriceEMAChart(canvasId, closes, times, ema20, ema50, ema100, ema200, tf) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const dpr  = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W    = Math.max(Math.floor(rect.width), 200);
+  const H    = Math.max(Math.floor(rect.height), 150);
+  canvas.width  = W * dpr;  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0b1728';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = { t: 14, b: 38, l: 64, r: 10 };
+  const cW  = W - pad.l - pad.r;
+  const cH  = H - pad.t - pad.b;
+  const n   = closes.length;
+
+  let minV = Math.min(...closes), maxV = Math.max(...closes);
+  [ema20, ema50, ema100, ema200].forEach(arr => {
+    arr.forEach(v => { if (v !== null) { minV = Math.min(minV, v); maxV = Math.max(maxV, v); } });
+  });
+  const rng = maxV - minV || 1;
+  minV -= rng * 0.04;  maxV += rng * 0.04;
+
+  const xOf = i => pad.l + (i / Math.max(n - 1, 1)) * cW;
+  const yOf = v => pad.t + cH - ((v - minV) / (maxV - minV)) * cH;
+
+  // Grid
+  const ticks = compNiceTicks(minV, maxV, 5);
+  ctx.font = '9px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign = 'right';
+  ctx.setLineDash([3, 6]);
+  ctx.lineWidth = 1;
+  ticks.forEach(t => {
+    const y = yOf(t);
+    if (y < pad.t - 2 || y > pad.t + cH + 2) return;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillText(formatPrice(t), pad.l - 4, y + 3);
+  });
+  ctx.setLineDash([]);
+
+  function drawLine(arr, color, lw, glow) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = lw;
+    if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 10; }
+    let started = false;
+    arr.forEach((v, i) => {
+      if (v === null) return;
+      const x = xOf(i), y = yOf(v);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // EMAs behind (muted)
+  drawLine(ema200, 'rgba(234,57,67,0.48)',  1.5, false);
+  drawLine(ema100, 'rgba(245,158,11,0.48)', 1.5, false);
+  drawLine(ema50,  'rgba(14,165,233,0.52)', 1.5, false);
+  drawLine(ema20,  'rgba(22,199,132,0.52)', 1.5, false);
+  // Price line on top — bright + glow
+  drawLine(closes, '#e8edf2', 2, true);
+
+  // X-axis labels
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.font      = '9px "JetBrains Mono",Consolas,monospace';
+  ctx.textAlign = 'center';
+  const useTF   = tf === '15m' || tf === '1h';
+  const step    = Math.max(1, Math.floor(n / 6));
+  for (let i = 0; i < n; i += step) {
+    const d   = new Date(times[i]);
+    const lbl = useTF ? d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                      : d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    ctx.fillText(lbl, xOf(i), pad.t + cH + 14);
+  }
+  ctx.textAlign = 'right';
+  const dL  = new Date(times[n - 1]);
+  ctx.fillText(
+    useTF ? dL.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+          : dL.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+    W - pad.r, pad.t + cH + 14
+  );
+}
+
+let _chartsResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_chartsResizeTimer);
+  _chartsResizeTimer = setTimeout(() => {
+    ['15m','1h','4h','1d'].forEach(tf => { const d = chartsData[tf]; if (d) renderTFChart(tf, d.closes, d.times); });
+  }, 160);
+});
+
+updateMultiTFCharts();
+setInterval(() => { chartsData = {}; updateMultiTFCharts(); }, 300_000);
 
 /* ════════════════════════════════════════════════════════
    NOTICIAS — RSS Multi-Feed
