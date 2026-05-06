@@ -21,10 +21,9 @@
       <span class="header__logo-tag">Pro</span>
     </div>
     <nav class="header__nav">
-      <span class="nav-item active" data-section="sec-dashboard">Dashboard</span>
-      <span class="nav-item" data-section="sec-graficos">Gráficos</span>
+      <span class="nav-item" data-section="sec-noticias">Actualidad</span>
       <span class="nav-item" data-section="sec-comparaciones">Comparaciones</span>
-      <span class="nav-item" data-section="sec-noticias">Noticias</span>
+      <span class="nav-item active" data-section="sec-dashboard">Dashboard</span>
       <span class="nav-item" data-section="sec-alertas">Alertas</span>
     </nav>
     <div class="header__status">
@@ -77,397 +76,437 @@
       </div>
     </div>
 
-    <!-- RSI GAUGES -->
-    <section class="rsi-section">
+    <!-- PANEL CONTROL BAR -->
+    <div class="dash-panel-ctrl">
+      <span class="dpc-label">Paneles</span>
+      <button class="dpc-btn active" data-panel="charts"><span class="dpc-dot"></span>Gráficos</button>
+      <button class="dpc-btn active" data-panel="gauges"><span class="dpc-dot"></span>RSI</button>
+      <button class="dpc-btn active" data-panel="rsi-index"><span class="dpc-dot"></span>RSI Índice</button>
+      <button class="dpc-btn active" data-panel="ema"><span class="dpc-dot"></span>EMAs</button>
+      <button class="dpc-btn active" data-panel="vol"><span class="dpc-dot"></span>Volumen</button>
+    </div>
 
-      <!-- GAUGE ASSET TABS -->
-      <div class="gauge-section-hdr">
-        <span class="gauge-section-title">RSI · Período 14 · Multi-timeframe</span>
-        <div class="gauge-asset-tabs" id="gaugeTabs">
-          <button class="gauge-tab active" data-sym="BTCUSDT">BTC</button>
-          <button class="gauge-tab" data-sym="ETHUSDT">ETH</button>
-          <button class="gauge-tab" data-sym="XRPUSDT">XRP</button>
-          <button class="gauge-tab" data-sym="BNBUSDT">BNB</button>
-          <button class="gauge-tab" data-sym="SOLUSDT">SOL</button>
-        </div>
-      </div>
+    <!-- PANELS GRID -->
+    <div class="dash-grid" id="dash-grid">
 
-      <div class="gauges-grid">
-
-        <div class="gauge-card" id="card-15m">
-          <div class="gauge-card__head">
-            <span class="gauge-tf-badge">15M</span>
-            <span class="gauge-delta font-mono" id="delta-15m"></span>
+      <!-- GRÁFICOS MULTI-TF -->
+      <section class="charts-section panel-block" id="panel-charts">
+        <div class="panel-hdr" data-panel="charts">
+          <span class="drag-handle" title="Mover panel">⠿</span>
+          <span class="panel-hdr-title">◈ Precio + EMAs</span>
+          <span class="panel-hdr-meta font-mono" id="chartsSym">BTC/USDT</span>
+          <div class="panel-actions">
+            <button class="panel-btn panel-btn-size" data-panel="charts" title="Expandir a ancho completo">⊞</button>
+            <button class="panel-btn panel-btn-close" data-panel="charts" title="Quitar del tablero">✕</button>
           </div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-15m" aria-label="RSI 15 minutos"></svg>
-          </div>
-          <div class="gauge-zone-label" id="lbl-15m">—</div>
         </div>
+        <div class="panel-body">
+        <div class="charts-controls">
+          <div class="charts-bars-ctrl">
+            <span class="charts-ctrl-label">Velas</span>
+            <button class="charts-bars-btn" data-bars="50">50</button>
+            <button class="charts-bars-btn active" data-bars="100">100</button>
+            <button class="charts-bars-btn" data-bars="150">150</button>
+            <button class="charts-bars-btn" data-bars="200">200</button>
+          </div>
+          <div class="charts-ema-ctrl">
+            <span class="charts-ctrl-label">EMAs</span>
+            <button class="charts-ema-btn active" data-ema="20" style="--ema-color:#16c784">EMA 20</button>
+            <button class="charts-ema-btn active" data-ema="50" style="--ema-color:#0ea5e9">EMA 50</button>
+            <button class="charts-ema-btn active" data-ema="100" style="--ema-color:#f59e0b">EMA 100</button>
+            <button class="charts-ema-btn active" data-ema="200" style="--ema-color:#ea3943">EMA 200</button>
+          </div>
+        </div>
+        <div class="charts-grid">
 
-        <div class="gauge-card" id="card-1h">
-          <div class="gauge-card__head">
-            <span class="gauge-tf-badge">1H</span>
-            <span class="gauge-delta font-mono" id="delta-1h"></span>
-          </div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-1h" aria-label="RSI 1 hora"></svg>
-          </div>
-          <div class="gauge-zone-label" id="lbl-1h">—</div>
-        </div>
-
-        <div class="gauge-card" id="card-4h">
-          <div class="gauge-card__head">
-            <span class="gauge-tf-badge">4H</span>
-            <span class="gauge-delta font-mono" id="delta-4h"></span>
-          </div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-4h" aria-label="RSI 4 horas"></svg>
-          </div>
-          <div class="gauge-zone-label" id="lbl-4h">—</div>
-        </div>
-
-        <div class="gauge-card" id="card-1d">
-          <div class="gauge-card__head">
-            <span class="gauge-tf-badge">1D</span>
-            <span class="gauge-delta font-mono" id="delta-1d"></span>
-          </div>
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-1d" aria-label="RSI 1 día"></svg>
-          </div>
-          <div class="gauge-zone-label" id="lbl-1d">—</div>
-        </div>
-
-      </div>
-
-      <!-- RESUMEN MULTI-TF -->
-      <div class="rsi-summary">
-        <div class="summary-header">
-          <span>TF</span><span>RSI</span><span>Zona</span><span>Señal operativa</span><span>Estado</span>
-        </div>
-        <div class="summary-row" id="srow-15m">
-          <span class="srow-tf">15M</span>
-          <span class="srow-rsi font-mono" id="srsi-15m">—</span>
-          <span class="srow-zone" id="szone-15m">—</span>
-          <span class="srow-signal" id="ssig-15m">—</span>
-          <span class="srow-bar"><span class="srow-bar-fill" id="sbar-15m"></span></span>
-        </div>
-        <div class="summary-row" id="srow-1h">
-          <span class="srow-tf">1H</span>
-          <span class="srow-rsi font-mono" id="srsi-1h">—</span>
-          <span class="srow-zone" id="szone-1h">—</span>
-          <span class="srow-signal" id="ssig-1h">—</span>
-          <span class="srow-bar"><span class="srow-bar-fill" id="sbar-1h"></span></span>
-        </div>
-        <div class="summary-row" id="srow-4h">
-          <span class="srow-tf">4H</span>
-          <span class="srow-rsi font-mono" id="srsi-4h">—</span>
-          <span class="srow-zone" id="szone-4h">—</span>
-          <span class="srow-signal" id="ssig-4h">—</span>
-          <span class="srow-bar"><span class="srow-bar-fill" id="sbar-4h"></span></span>
-        </div>
-        <div class="summary-row" id="srow-1d">
-          <span class="srow-tf">1D</span>
-          <span class="srow-rsi font-mono" id="srsi-1d">—</span>
-          <span class="srow-zone" id="szone-1d">—</span>
-          <span class="srow-signal" id="ssig-1d">—</span>
-          <span class="srow-bar"><span class="srow-bar-fill" id="sbar-1d"></span></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- EMA PANEL -->
-    <section class="ema-section">
-      <div class="ema-section__hdr">
-        <span class="ema-section__title" id="emaSectionTitle">◈ EMAs · BTC/USDT · Medias Exponenciales</span>
-        <div class="ema-legend">
-          <span class="ema-leg-dot" style="background:#22c55e"></span><span class="ema-leg-lbl">EMA 20</span>
-          <span class="ema-leg-dot" style="background:#eab308"></span><span class="ema-leg-lbl">EMA 50</span>
-          <span class="ema-leg-dot" style="background:#f97316"></span><span class="ema-leg-lbl">EMA 100</span>
-          <span class="ema-leg-dot" style="background:#ef4444"></span><span class="ema-leg-lbl">EMA 200</span>
-        </div>
-      </div>
-      <div class="ema-grid">
-
-        <div class="ema-card" id="ema-card-15m">
-          <div class="ema-card__header">
-            <div class="ema-card__tf">15M</div>
-            <div class="ema-card__trend" id="ema-trend-15m"></div>
-          </div>
-          <div class="ema-rows">
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-15m-20">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-20"></div></div>
+          <div class="chart-card">
+            <div class="chart-card-hdr">
+              <span class="chart-tf-badge">15M</span>
+              <span class="chart-price font-mono" id="chartPrice-15m">—</span>
+              <div class="chart-ema-legend">
+                <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
               </div>
-              <span class="ema-row__pos" id="ema-pos-15m-20"></span>
             </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-15m-50">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-50"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-15m-50"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-15m-100">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-100"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-15m-100"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-15m-200">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-200"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-15m-200"></span>
+            <div class="chart-canvas-wrap">
+              <canvas id="chartCanvas-15m"></canvas>
+              <div class="chart-loading" id="chartLoad-15m">Cargando…</div>
             </div>
           </div>
-          <div class="ema-card__badge" id="ema-badge-15m"></div>
-        </div>
 
-        <div class="ema-card" id="ema-card-1h">
-          <div class="ema-card__header">
-            <div class="ema-card__tf">1H</div>
-            <div class="ema-card__trend" id="ema-trend-1h"></div>
-          </div>
-          <div class="ema-rows">
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1h-20">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-20"></div></div>
+          <div class="chart-card">
+            <div class="chart-card-hdr">
+              <span class="chart-tf-badge">1H</span>
+              <span class="chart-price font-mono" id="chartPrice-1h">—</span>
+              <div class="chart-ema-legend">
+                <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
               </div>
-              <span class="ema-row__pos" id="ema-pos-1h-20"></span>
             </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1h-50">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-50"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1h-50"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1h-100">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-100"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1h-100"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1h-200">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-200"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1h-200"></span>
+            <div class="chart-canvas-wrap">
+              <canvas id="chartCanvas-1h"></canvas>
+              <div class="chart-loading" id="chartLoad-1h">Cargando…</div>
             </div>
           </div>
-          <div class="ema-card__badge" id="ema-badge-1h"></div>
+
+          <div class="chart-card">
+            <div class="chart-card-hdr">
+              <span class="chart-tf-badge">4H</span>
+              <span class="chart-price font-mono" id="chartPrice-4h">—</span>
+              <div class="chart-ema-legend">
+                <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="chartCanvas-4h"></canvas>
+              <div class="chart-loading" id="chartLoad-4h">Cargando…</div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-card-hdr">
+              <span class="chart-tf-badge">1D</span>
+              <span class="chart-price font-mono" id="chartPrice-1d">—</span>
+              <div class="chart-ema-legend">
+                <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
+                <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="chartCanvas-1d"></canvas>
+              <div class="chart-loading" id="chartLoad-1d">Cargando…</div>
+            </div>
+          </div>
+
+        </div>
+        </div><!-- /panel-body charts -->
+      </section>
+
+      <!-- RSI GAUGES -->
+      <section class="rsi-section panel-block" id="panel-gauges">
+
+        <div class="panel-hdr" data-panel="gauges">
+          <span class="drag-handle" title="Mover panel">⠿</span>
+          <span class="panel-hdr-title">⦿ RSI · Período 14</span>
+          <div class="gauge-asset-tabs" id="gaugeTabs">
+            <button class="gauge-tab active" data-sym="BTCUSDT">BTC</button>
+            <button class="gauge-tab" data-sym="ETHUSDT">ETH</button>
+            <button class="gauge-tab" data-sym="XRPUSDT">XRP</button>
+            <button class="gauge-tab" data-sym="BNBUSDT">BNB</button>
+            <button class="gauge-tab" data-sym="SOLUSDT">SOL</button>
+          </div>
+          <div class="panel-actions">
+            <button class="panel-btn panel-btn-size" data-panel="gauges" title="Expandir a ancho completo">⊞</button>
+            <button class="panel-btn panel-btn-close" data-panel="gauges" title="Quitar del tablero">✕</button>
+          </div>
+        </div>
+        <div class="panel-body">
+        <div class="gauges-grid">
+          <div class="gauge-card" id="card-15m">
+            <div class="gauge-card__head">
+              <span class="gauge-tf-badge">15M</span>
+              <span class="gauge-delta font-mono" id="delta-15m"></span>
+            </div>
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 200 152" id="gauge-15m" aria-label="RSI 15 minutos"></svg>
+            </div>
+            <div class="gauge-zone-label" id="lbl-15m">—</div>
+          </div>
+          <div class="gauge-card" id="card-1h">
+            <div class="gauge-card__head">
+              <span class="gauge-tf-badge">1H</span>
+              <span class="gauge-delta font-mono" id="delta-1h"></span>
+            </div>
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 200 152" id="gauge-1h" aria-label="RSI 1 hora"></svg>
+            </div>
+            <div class="gauge-zone-label" id="lbl-1h">—</div>
+          </div>
+          <div class="gauge-card" id="card-4h">
+            <div class="gauge-card__head">
+              <span class="gauge-tf-badge">4H</span>
+              <span class="gauge-delta font-mono" id="delta-4h"></span>
+            </div>
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 200 152" id="gauge-4h" aria-label="RSI 4 horas"></svg>
+            </div>
+            <div class="gauge-zone-label" id="lbl-4h">—</div>
+          </div>
+          <div class="gauge-card" id="card-1d">
+            <div class="gauge-card__head">
+              <span class="gauge-tf-badge">1D</span>
+              <span class="gauge-delta font-mono" id="delta-1d"></span>
+            </div>
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 200 152" id="gauge-1d" aria-label="RSI 1 día"></svg>
+            </div>
+            <div class="gauge-zone-label" id="lbl-1d">—</div>
+          </div>
         </div>
 
-        <div class="ema-card" id="ema-card-4h">
-          <div class="ema-card__header">
-            <div class="ema-card__tf">4H</div>
-            <div class="ema-card__trend" id="ema-trend-4h"></div>
+        <div class="rsi-summary">
+          <div class="summary-header">
+            <span>TF</span><span>RSI</span><span>Zona</span><span>Señal operativa</span><span>Estado</span>
           </div>
-          <div class="ema-rows">
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-4h-20">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-20"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-4h-20"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-4h-50">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-50"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-4h-50"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-4h-100">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-100"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-4h-100"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-4h-200">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-200"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-4h-200"></span>
-            </div>
+          <div class="summary-row" id="srow-15m">
+            <span class="srow-tf">15M</span>
+            <span class="srow-rsi font-mono" id="srsi-15m">—</span>
+            <span class="srow-zone" id="szone-15m">—</span>
+            <span class="srow-signal" id="ssig-15m">—</span>
+            <span class="srow-bar"><span class="srow-bar-fill" id="sbar-15m"></span></span>
           </div>
-          <div class="ema-card__badge" id="ema-badge-4h"></div>
+          <div class="summary-row" id="srow-1h">
+            <span class="srow-tf">1H</span>
+            <span class="srow-rsi font-mono" id="srsi-1h">—</span>
+            <span class="srow-zone" id="szone-1h">—</span>
+            <span class="srow-signal" id="ssig-1h">—</span>
+            <span class="srow-bar"><span class="srow-bar-fill" id="sbar-1h"></span></span>
+          </div>
+          <div class="summary-row" id="srow-4h">
+            <span class="srow-tf">4H</span>
+            <span class="srow-rsi font-mono" id="srsi-4h">—</span>
+            <span class="srow-zone" id="szone-4h">—</span>
+            <span class="srow-signal" id="ssig-4h">—</span>
+            <span class="srow-bar"><span class="srow-bar-fill" id="sbar-4h"></span></span>
+          </div>
+          <div class="summary-row" id="srow-1d">
+            <span class="srow-tf">1D</span>
+            <span class="srow-rsi font-mono" id="srsi-1d">—</span>
+            <span class="srow-zone" id="szone-1d">—</span>
+            <span class="srow-signal" id="ssig-1d">—</span>
+            <span class="srow-bar"><span class="srow-bar-fill" id="sbar-1d"></span></span>
+          </div>
         </div>
+        </div><!-- /panel-body gauges -->
 
-        <div class="ema-card" id="ema-card-1d">
-          <div class="ema-card__header">
-            <div class="ema-card__tf">1D</div>
-            <div class="ema-card__trend" id="ema-trend-1d"></div>
-          </div>
-          <div class="ema-rows">
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1d-20">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-20"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1d-20"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1d-50">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-50"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1d-50"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1d-100">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-100"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1d-100"></span>
-            </div>
-            <div class="ema-row">
-              <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
-              <div class="ema-row__center">
-                <span class="ema-row__val font-mono" id="ema-val-1d-200">—</span>
-                <div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-200"></div></div>
-              </div>
-              <span class="ema-row__pos" id="ema-pos-1d-200"></span>
-            </div>
-          </div>
-          <div class="ema-card__badge" id="ema-badge-1d"></div>
-        </div>
+      </section>
 
-      </div>
-    </section>
 
-    <!-- ÍNDICE RSI -->
-    <section class="rsi-index-section">
-      <div class="rsi-index-hdr">
-        <div class="rsi-index-hdr__left">
-          <span class="rsi-index-title">◈ Índice RSI · Promedio Multi-Asset</span>
-          <span class="rsi-index-sub">BTC · ETH · SOL · XRP · BNB — últimos 30 días (1D)</span>
+      <!-- ÍNDICE RSI -->
+      <section class="rsi-index-section panel-block" id="panel-rsi-index">
+        <div class="panel-hdr rsi-index-hdr" data-panel="rsi-index">
+          <span class="drag-handle" title="Mover panel">⠿</span>
+          <div class="rsi-index-hdr__left">
+            <span class="rsi-index-title">◈ Índice RSI · Promedio Multi-Asset</span>
+            <span class="rsi-index-sub">BTC · ETH · SOL · XRP · BNB</span>
+          </div>
+          <div class="rsi-index-current">
+            <span class="rsi-index-avg-label">Prom.</span>
+            <span class="rsi-index-avg-val font-mono" id="rsiIndexAvg">—</span>
+            <span class="rsi-index-avg-zone" id="rsiIndexZone">—</span>
+          </div>
+          <div class="panel-actions">
+            <button class="panel-btn panel-btn-size" data-panel="rsi-index" title="Expandir a ancho completo">⊞</button>
+            <button class="panel-btn panel-btn-close" data-panel="rsi-index" title="Quitar del tablero">✕</button>
+          </div>
         </div>
-        <div class="rsi-index-current">
-          <span class="rsi-index-avg-label">Promedio actual</span>
-          <span class="rsi-index-avg-val font-mono" id="rsiIndexAvg">—</span>
-          <span class="rsi-index-avg-zone" id="rsiIndexZone">—</span>
+        <div class="panel-body">
+        <div class="rsi-index-body">
+          <div class="rsi-index-chart-wrap">
+            <canvas id="rsiIndexChart"></canvas>
+            <div class="rsi-index-loading" id="rsiIndexLoading">Calculando índice RSI…</div>
+          </div>
+          <div class="rsi-index-cards" id="rsiIndexCards">
+            <div class="rsi-idx-card" id="rsi-idx-BTCUSDT"><span class="rsi-idx-name">BTC</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
+            <div class="rsi-idx-card" id="rsi-idx-ETHUSDT"><span class="rsi-idx-name">ETH</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
+            <div class="rsi-idx-card" id="rsi-idx-SOLUSDT"><span class="rsi-idx-name">SOL</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
+            <div class="rsi-idx-card" id="rsi-idx-XRPUSDT"><span class="rsi-idx-name">XRP</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
+            <div class="rsi-idx-card" id="rsi-idx-BNBUSDT"><span class="rsi-idx-name">BNB</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
+          </div>
         </div>
-      </div>
-      <div class="rsi-index-body">
-        <div class="rsi-index-chart-wrap">
-          <canvas id="rsiIndexChart"></canvas>
-          <div class="rsi-index-loading" id="rsiIndexLoading">Calculando índice RSI…</div>
+        </div><!-- /panel-body rsi-index -->
+      </section>
+
+      <!-- EMA PANEL -->
+      <section class="ema-section panel-block" id="panel-ema">
+        <div class="panel-hdr ema-section__hdr" data-panel="ema">
+          <span class="drag-handle" title="Mover panel">⠿</span>
+          <span class="ema-section__title" id="emaSectionTitle">◈ EMAs · BTC/USDT</span>
+          <div class="ema-legend">
+            <span class="ema-leg-dot" style="background:#22c55e"></span><span class="ema-leg-lbl">EMA 20</span>
+            <span class="ema-leg-dot" style="background:#eab308"></span><span class="ema-leg-lbl">EMA 50</span>
+            <span class="ema-leg-dot" style="background:#f97316"></span><span class="ema-leg-lbl">EMA 100</span>
+            <span class="ema-leg-dot" style="background:#ef4444"></span><span class="ema-leg-lbl">EMA 200</span>
+          </div>
+          <div class="panel-actions">
+            <button class="panel-btn panel-btn-size" data-panel="ema" title="Expandir a ancho completo">⊞</button>
+            <button class="panel-btn panel-btn-close" data-panel="ema" title="Quitar del tablero">✕</button>
+          </div>
         </div>
-        <div class="rsi-index-cards" id="rsiIndexCards">
-          <div class="rsi-idx-card" id="rsi-idx-BTCUSDT"><span class="rsi-idx-name">BTC</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
-          <div class="rsi-idx-card" id="rsi-idx-ETHUSDT"><span class="rsi-idx-name">ETH</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
-          <div class="rsi-idx-card" id="rsi-idx-SOLUSDT"><span class="rsi-idx-name">SOL</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
-          <div class="rsi-idx-card" id="rsi-idx-XRPUSDT"><span class="rsi-idx-name">XRP</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
-          <div class="rsi-idx-card" id="rsi-idx-BNBUSDT"><span class="rsi-idx-name">BNB</span><span class="rsi-idx-val font-mono">—</span><span class="rsi-idx-zone">—</span></div>
+        <div class="panel-body">
+        <div class="ema-grid">
+
+          <div class="ema-card" id="ema-card-15m">
+            <div class="ema-card__header">
+              <div class="ema-card__tf">15M</div>
+              <div class="ema-card__trend" id="ema-trend-15m"></div>
+            </div>
+            <div class="ema-rows">
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-15m-20">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-20"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-15m-20"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-15m-50">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-50"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-15m-50"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-15m-100">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-100"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-15m-100"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-15m-200">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-15m-200"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-15m-200"></span>
+              </div>
+            </div>
+            <div class="ema-card__badge" id="ema-badge-15m"></div>
+          </div>
+
+          <div class="ema-card" id="ema-card-1h">
+            <div class="ema-card__header">
+              <div class="ema-card__tf">1H</div>
+              <div class="ema-card__trend" id="ema-trend-1h"></div>
+            </div>
+            <div class="ema-rows">
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1h-20">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-20"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1h-20"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1h-50">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-50"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1h-50"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1h-100">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-100"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1h-100"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1h-200">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1h-200"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1h-200"></span>
+              </div>
+            </div>
+            <div class="ema-card__badge" id="ema-badge-1h"></div>
+          </div>
+
+          <div class="ema-card" id="ema-card-4h">
+            <div class="ema-card__header">
+              <div class="ema-card__tf">4H</div>
+              <div class="ema-card__trend" id="ema-trend-4h"></div>
+            </div>
+            <div class="ema-rows">
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-4h-20">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-20"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-4h-20"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-4h-50">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-50"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-4h-50"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-4h-100">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-100"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-4h-100"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-4h-200">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-4h-200"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-4h-200"></span>
+              </div>
+            </div>
+            <div class="ema-card__badge" id="ema-badge-4h"></div>
+          </div>
+
+          <div class="ema-card" id="ema-card-1d">
+            <div class="ema-card__header">
+              <div class="ema-card__tf">1D</div>
+              <div class="ema-card__trend" id="ema-trend-1d"></div>
+            </div>
+            <div class="ema-rows">
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#22c55e">EMA 20</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1d-20">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-20"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1d-20"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#eab308">EMA 50</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1d-50">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-50"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1d-50"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#f97316">EMA 100</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1d-100">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-100"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1d-100"></span>
+              </div>
+              <div class="ema-row">
+                <span class="ema-row__label" style="--ema-clr:#ef4444">EMA 200</span>
+                <div class="ema-row__center"><span class="ema-row__val font-mono" id="ema-val-1d-200">—</span><div class="ema-row__track"><div class="ema-row__fill" id="ema-fill-1d-200"></div></div></div>
+                <span class="ema-row__pos" id="ema-pos-1d-200"></span>
+              </div>
+            </div>
+            <div class="ema-card__badge" id="ema-badge-1d"></div>
+          </div>
+
         </div>
-      </div>
-    </section>
+        </div><!-- /panel-body ema -->
+      </section>
+
+
+      <!-- VOLUMEN BTC CHART -->
+      <section class="panel-block panel-full" id="panel-vol">
+        <div class="panel-hdr" data-panel="vol">
+          <span class="drag-handle" title="Mover panel">⠿</span>
+          <span class="panel-hdr-title">▦ Volumen Diario · BTCUSDT · 60 días</span>
+          <span class="panel-hdr-sub">verde = sobre MM · rojo = bajo MM · línea = promedio</span>
+          <span class="panel-hdr-meta font-mono" id="volPanelPct">—</span>
+          <div class="panel-actions">
+            <button class="panel-btn panel-btn-size" data-panel="vol" title="Reducir ancho">⊟</button>
+            <button class="panel-btn panel-btn-close" data-panel="vol" title="Quitar del tablero">✕</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="dash-vol-strip">
+            <div class="dvs-block">
+              <span class="dvs-label">Vol. Hoy vs MM<span id="dvsMaLabel">20</span>D</span>
+              <span class="dvs-pct font-mono" id="dvsPct">—</span>
+            </div>
+            <span class="dvs-sub" id="dvsSub">calculando…</span>
+            <div class="dvs-slider-wrap">
+              <span class="dvs-ctrl-lbl">Período:</span>
+              <span class="dvs-slider-end">15D</span>
+              <input type="range" id="dvsSlider" class="comp-range-slider" min="15" max="30" value="20" step="1">
+              <span class="dvs-slider-end">30D</span>
+              <span class="dvs-slider-val font-mono" id="dvsSliderVal">20D</span>
+            </div>
+          </div>
+          <div class="vol-dash-chart-wrap">
+            <canvas id="volChart"></canvas>
+            <div class="comp-loading" id="volLoading">Cargando volumen BTC…</div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /dash-grid -->
 
   </div><!-- /sec-dashboard -->
-
-  <!-- GRÁFICOS MULTI-TF -->
-  <section class="charts-section page-section sec-hidden" id="sec-graficos">
-    <div class="charts-hdr">
-      <span class="charts-title">◈ Precio + EMAs · Multi-Timeframe</span>
-      <span class="charts-sym font-mono" id="chartsSym">BTC/USDT</span>
-    </div>
-    <div class="charts-grid">
-
-      <div class="chart-card">
-        <div class="chart-card-hdr">
-          <span class="chart-tf-badge">15M</span>
-          <span class="chart-price font-mono" id="chartPrice-15m">—</span>
-          <div class="chart-ema-legend">
-            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
-          </div>
-        </div>
-        <div class="chart-canvas-wrap">
-          <canvas id="chartCanvas-15m"></canvas>
-          <div class="chart-loading" id="chartLoad-15m">Cargando…</div>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="chart-card-hdr">
-          <span class="chart-tf-badge">1H</span>
-          <span class="chart-price font-mono" id="chartPrice-1h">—</span>
-          <div class="chart-ema-legend">
-            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
-          </div>
-        </div>
-        <div class="chart-canvas-wrap">
-          <canvas id="chartCanvas-1h"></canvas>
-          <div class="chart-loading" id="chartLoad-1h">Cargando…</div>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="chart-card-hdr">
-          <span class="chart-tf-badge">4H</span>
-          <span class="chart-price font-mono" id="chartPrice-4h">—</span>
-          <div class="chart-ema-legend">
-            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
-          </div>
-        </div>
-        <div class="chart-canvas-wrap">
-          <canvas id="chartCanvas-4h"></canvas>
-          <div class="chart-loading" id="chartLoad-4h">Cargando…</div>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="chart-card-hdr">
-          <span class="chart-tf-badge">1D</span>
-          <span class="chart-price font-mono" id="chartPrice-1d">—</span>
-          <div class="chart-ema-legend">
-            <span class="cleg-item"><span class="cleg-dot" style="background:#16c784"></span>EMA 20</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#0ea5e9"></span>EMA 50</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#f59e0b"></span>EMA 100</span>
-            <span class="cleg-item"><span class="cleg-dot" style="background:#ea3943"></span>EMA 200</span>
-          </div>
-        </div>
-        <div class="chart-canvas-wrap">
-          <canvas id="chartCanvas-1d"></canvas>
-          <div class="chart-loading" id="chartLoad-1d">Cargando…</div>
-        </div>
-      </div>
-
-    </div>
-  </section>
 
   <!-- ALERTAS -->
   <section class="alerts-section page-section sec-hidden" id="sec-alertas">
@@ -511,12 +550,35 @@
   <!-- COMPARACIONES -->
   <section class="comp-section page-section sec-hidden" id="sec-comparaciones">
 
+    <!-- Dominancia fija -->
+    <div class="dom-bar">
+      <div class="dom-item">
+        <span class="dom-label">BTC Dom.</span>
+        <span class="dom-value font-mono" id="domBTC">—</span>
+      </div>
+      <span class="dom-sep">|</span>
+      <div class="dom-item">
+        <span class="dom-label">ETH Dom.</span>
+        <span class="dom-value font-mono" id="domETH">—</span>
+      </div>
+      <span class="dom-sep">|</span>
+      <div class="dom-item">
+        <span class="dom-label">USDT Dom.</span>
+        <span class="dom-value font-mono" id="domUSDT">—</span>
+      </div>
+      <span class="dom-sep">|</span>
+      <div class="dom-item">
+        <span class="dom-label">Market Cap Total</span>
+        <span class="dom-value font-mono" id="domMCap">—</span>
+      </div>
+      <span class="dom-upd" id="domUpdated"></span>
+    </div>
+
     <div class="comp-topbar">
       <div class="comp-tabs">
         <button class="comp-tab active" data-tab="global">Vista Global</button>
         <button class="comp-tab" data-tab="ai">✦ Crypto AI</button>
         <button class="comp-tab" data-tab="cap">◈ Ranking Cap.</button>
-        <button class="comp-tab" data-tab="vol">▦ Volumen</button>
       </div>
       <div class="comp-topbar__right">
         <span class="comp-live-badge"><span class="comp-live-dot"></span>Live · 10s</span>
@@ -646,39 +708,6 @@
       </div>
     </div>
 
-    <!-- Volumen BTC -->
-    <div class="comp-view" id="view-vol" style="display:none">
-      <div class="vol-header-row">
-        <div class="vol-stat-card">
-          <span class="vol-stat-label">Vol. Hoy vs MM<span id="volMaPeriodLabel">20</span>D</span>
-          <span class="vol-stat-value" id="volPctValue">—</span>
-          <span class="vol-stat-sub" id="volPctSub">calculando…</span>
-        </div>
-        <div class="vol-ma-control">
-          <span class="vol-ma-title">Período del Promedio Móvil</span>
-          <div class="vol-slider-row">
-            <span class="vol-slider-end">15D</span>
-            <input type="range" id="volMaSlider" class="comp-range-slider vol-ma-slider" min="15" max="30" value="20" step="1">
-            <span class="vol-slider-end">30D</span>
-            <span class="vol-ma-days" id="volMaDays">20 días</span>
-          </div>
-        </div>
-      </div>
-      <div class="comp-chart-card">
-        <div class="comp-chart-hdr">
-          <div class="comp-chart-hdr__left">
-            <span class="comp-chart-title">▦ Volumen Diario · BTCUSDT · Últimos 60 días</span>
-            <span class="comp-chart-sub">verde = sobre el promedio móvil · rojo = bajo el promedio móvil · línea amarilla = MA</span>
-          </div>
-        </div>
-        <div class="comp-chart-body vol-chart-body">
-          <div class="comp-chart-wrap">
-            <canvas id="volChart"></canvas>
-            <div class="comp-loading" id="volLoading">Cargando volumen BTC…</div>
-          </div>
-        </div>
-      </div>
-    </div>
 
   </section>
 
