@@ -84,6 +84,7 @@
       <button class="dpc-btn active" data-panel="rsi-index"><span class="dpc-dot"></span>RSI Índice</button>
       <button class="dpc-btn active" data-panel="ema"><span class="dpc-dot"></span>EMAs</button>
       <button class="dpc-btn active" data-panel="vol"><span class="dpc-dot"></span>Volumen</button>
+      <button class="dpc-btn dpc-reset" data-reset-layout title="Resetear posición de todos los paneles">↺ Reset</button>
     </div>
 
     <!-- PANELS GRID -->
@@ -531,18 +532,33 @@
 
   <!-- NOTICIAS -->
   <section class="news-section page-section sec-hidden" id="sec-noticias">
-    <div class="news-hdr">
-      <span class="news-hdr__title">◈ Noticias · Crypto News</span>
-      <div class="news-hdr__meta">
-        <span class="news-badge" style="color:#b87c28">CoinDesk</span>
-        <span class="news-sep">·</span>
-        <span class="news-badge" style="color:#2878a8">Cointelegraph</span>
-        <span class="news-sep">·</span>
-        <span class="news-badge" style="color:#2e7878">Decrypt</span>
-        <span class="news-upd" id="newsUpdated"></span>
+
+    <div class="markets-panel">
+      <div class="markets-hdr">
+        <span class="markets-hdr__title">◈ Mercados Globales</span>
+        <span class="markets-upd" id="marketsUpdated"></span>
+      </div>
+      <div id="marketsGrid" class="markets-grid">
+        <div class="news-placeholder">Cargando mercados…</div>
       </div>
     </div>
-    <div class="news-grid" id="newsGrid">
+
+    <div class="news-hdr">
+      <span class="news-hdr__title">◈ Noticias</span>
+      <span class="news-upd" id="newsUpdated"></span>
+    </div>
+    <div class="news-tabs">
+      <button class="news-tab active" data-cat="cripto">Cripto</button>
+      <button class="news-tab" data-cat="globales">Globales</button>
+      <button class="news-tab" data-cat="argentinas">Argentinas</button>
+    </div>
+    <div class="news-grid" id="newsGrid-cripto">
+      <div class="news-placeholder">Cargando noticias…</div>
+    </div>
+    <div class="news-grid news-grid--hidden" id="newsGrid-globales">
+      <div class="news-placeholder">Cargando noticias…</div>
+    </div>
+    <div class="news-grid news-grid--hidden" id="newsGrid-argentinas">
       <div class="news-placeholder">Cargando noticias…</div>
     </div>
   </section>

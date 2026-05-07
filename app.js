@@ -18,11 +18,6 @@ function showSection(id) {
   if (id === 'sec-comparaciones' && typeof compData !== 'undefined' && compData) {
     setTimeout(() => renderCompViews(), 60);
   }
-  if (id === 'sec-graficos') {
-    setTimeout(() => {
-      ['15m','1h','4h','1d'].forEach(tf => { const d = chartsData[tf]; if (d) renderTFChart(tf, d.closes, d.times); });
-    }, 60);
-  }
 }
 
 document.querySelectorAll('.nav-item[data-section]').forEach(item => {
@@ -131,7 +126,8 @@ const COMP_COLORS = {
    ══════════════════════════════════════════════════════════ */
 
 const CX = 100, CY = 100;
-const R_OUT = 84, R_IN = 58, R_NDL = 76, R_NDL_BASE = 12;
+const R_OUT = 84, R_IN = 58; // kept for legacy donutArc references
+const R_ARC = 78, R_NDL = 65, R_NDL_BASE = 8;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function el(tag, attrs) {
@@ -145,7 +141,7 @@ function p2c(cx, cy, r, deg) {
   const rad = deg * Math.PI / 180;
   return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
 }
-function rsiAngle(rsi) { return 180 - (Math.max(0, Math.min(100, rsi)) / 100) * 180; }
+function rsiAngle(rsi) { return 210 - (Math.max(0, Math.min(100, rsi)) / 100) * 240; }
 
 function donutArc(ro, ri, a1, a2) {
   const diff = Math.abs(a1 - a2);
@@ -222,121 +218,118 @@ function buildGauge(id) {
   if (!svg) return;
   svg.innerHTML = '';
 
+  // ── Defs ─────────────────────────────────────────────────
   const defs = el('defs');
   defs.innerHTML = `
-    <filter id="glow-${id}" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="glow-sm-${id}" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <radialGradient id="hub-grad-${id}" cx="50%" cy="35%" r="65%">
-      <stop offset="0%"   stop-color="#2e4055"/>
-      <stop offset="100%" stop-color="#08111c"/>
+    <radialGradient id="gbg-${id}" cx="50%" cy="50%" r="55%">
+      <stop offset="0%"   stop-color="#0c2035"/>
+      <stop offset="100%" stop-color="#050c18"/>
     </radialGradient>
+    <radialGradient id="ggl-${id}" cx="50%" cy="25%" r="65%">
+      <stop offset="0%"   stop-color="#0a3060" stop-opacity="0.65"/>
+      <stop offset="60%"  stop-color="#030c20" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#020810" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="nf-${id}" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   `;
   svg.appendChild(defs);
 
-  // Dark background fill
+  // ── Background circle ─────────────────────────────────────
+  svg.appendChild(el('circle', { cx: CX, cy: CY, r: '93', fill: `url(#gbg-${id})` }));
+
+  // Inner glow (pie-wedge covering the 240° gauge area)
+  const gA1 = p2c(CX, CY, R_ARC, 210), gA2 = p2c(CX, CY, R_ARC, -30);
   svg.appendChild(el('path', {
-    d: donutArc(R_OUT + 3, R_IN - 3, 180, 0),
-    fill: '#07111f'
+    d: `M ${f(CX)} ${f(CY)} L ${f(gA1.x)} ${f(gA1.y)} A ${R_ARC} ${R_ARC} 0 1 0 ${f(gA2.x)} ${f(gA2.y)} Z`,
+    fill: `url(#ggl-${id})`
   }));
 
-  // Outer border ring
+  // ── Zone arc segments ─────────────────────────────────────
+  function zoneArc(rsi0, rsi1, color, op) {
+    const a1 = rsiAngle(rsi0), a2 = rsiAngle(rsi1);
+    const p1 = p2c(CX, CY, R_ARC, a1), p2_ = p2c(CX, CY, R_ARC, a2);
+    return el('path', {
+      d: `M ${f(p1.x)} ${f(p1.y)} A ${R_ARC} ${R_ARC} 0 ${rsi1 - rsi0 > 75 ? 1 : 0} 0 ${f(p2_.x)} ${f(p2_.y)}`,
+      fill: 'none', stroke: color, 'stroke-width': '5',
+      'stroke-linecap': 'butt', opacity: String(op)
+    });
+  }
+
+  // Main arc overlay (thin white ring)
   svg.appendChild(el('path', {
-    d: donutArc(R_OUT + 3, R_OUT + 1, 180, 0),
-    fill: 'none', stroke: '#1a2d3e', 'stroke-width': '1.2'
+    d: `M ${f(gA1.x)} ${f(gA1.y)} A ${R_ARC} ${R_ARC} 0 1 0 ${f(gA2.x)} ${f(gA2.y)}`,
+    fill: 'none', stroke: 'rgba(175,210,240,0.30)', 'stroke-width': '1.2'
   }));
 
-  // Zone color segments
-  ZONE_SEGS.forEach(z => {
-    const a1 = rsiAngle(z.rsi0), a2 = rsiAngle(z.rsi1);
-    svg.appendChild(el('path', {
-      d: donutArc(R_OUT, R_IN, a1, a2),
-      fill: z.color, opacity: z.opacity + 0.05
-    }));
-  });
 
-  // Active fill (RSI 0 → current) — updated each frame
-  svg.appendChild(el('path', {
-    class: 'g-active-arc',
-    d: '', fill: 'rgba(255,255,255,0.05)', opacity: '0'
-  }));
-
-  // Active outer edge glow
-  svg.appendChild(el('path', {
-    class: 'g-active-stroke',
-    d: '', fill: 'none',
-    stroke: '#ffffff', 'stroke-width': '1.5', opacity: '0',
-    filter: `url(#glow-sm-${id})`
-  }));
-
-  // Tick marks
-  [0, 10, 20, 26, 30, 40, 50, 60, 70, 74, 80, 90, 100].forEach(rsi => {
-    const isMajor = [0, 26, 50, 74, 100].includes(rsi);
+  // ── Tick marks & numbers ──────────────────────────────────
+  for (let rsi = 0; rsi <= 100; rsi += 5) {
+    const isMajor = rsi % 10 === 0;
     const ang   = rsiAngle(rsi);
-    const outer = p2c(CX, CY, R_OUT + 3, ang);
-    const inner = p2c(CX, CY, R_OUT - (isMajor ? 4 : 1), ang);
+    const outer = p2c(CX, CY, R_ARC + 1, ang);
+    const inner = p2c(CX, CY, R_ARC - (isMajor ? 9 : 4), ang);
     svg.appendChild(el('line', {
       x1: f(outer.x), y1: f(outer.y), x2: f(inner.x), y2: f(inner.y),
-      stroke: isMajor ? '#2e4a62' : '#18283a',
-      'stroke-width': isMajor ? '1.5' : '0.8'
+      stroke: isMajor ? 'rgba(185,215,240,0.80)' : 'rgba(120,170,210,0.38)',
+      'stroke-width': isMajor ? '1.5' : '0.8', 'stroke-linecap': 'round'
     }));
-  });
+    if (rsi % 25 === 0) {
+      const np = p2c(CX, CY, R_ARC + 15, ang);
+      const t  = el('text', {
+        x: f(np.x), y: f(np.y),
+        'text-anchor': 'middle', 'dominant-baseline': 'middle',
+        fill: 'rgba(85,150,205,0.82)',
+        'font-size': '7.5',
+        'font-family': '"JetBrains Mono",Consolas,monospace',
+        'font-weight': '600'
+      });
+      t.textContent = rsi;
+      svg.appendChild(t);
+    }
+  }
 
-  // Needle glow
+  // ── Needle glow ───────────────────────────────────────────
+  const ndlInit  = p2c(CX, CY, R_NDL, 210);
+  const tailInit = p2c(CX, CY, R_NDL_BASE, (210 + 180) % 360);
   svg.appendChild(el('line', {
     class: 'g-needle-glow',
-    x1: f(CX), y1: f(CY), x2: f(CX), y2: f(CY - R_NDL),
-    stroke: '#ffffff', 'stroke-width': '5', 'stroke-linecap': 'round',
-    opacity: '0.10', filter: `url(#glow-${id})`
+    x1: f(CX), y1: f(CY), x2: f(ndlInit.x), y2: f(ndlInit.y),
+    stroke: '#1d9bf0', 'stroke-width': '5', 'stroke-linecap': 'round',
+    opacity: '0.22', filter: `url(#nf-${id})`
   }));
 
-  // Needle
+  // ── Needle ────────────────────────────────────────────────
   svg.appendChild(el('line', {
     class: 'g-needle',
-    x1: f(p2c(CX, CY, R_NDL_BASE, 270).x), y1: f(p2c(CX, CY, R_NDL_BASE, 270).y),
-    x2: f(CX), y2: f(CY - R_NDL),
-    stroke: '#c8d8e8', 'stroke-width': '1.5', 'stroke-linecap': 'round',
-    filter: `url(#glow-sm-${id})`
+    x1: f(tailInit.x), y1: f(tailInit.y), x2: f(ndlInit.x), y2: f(ndlInit.y),
+    stroke: '#b8d4ee', 'stroke-width': '1.3', 'stroke-linecap': 'round',
+    filter: `url(#nf-${id})`
   }));
 
-  // Needle tip dot
   svg.appendChild(el('circle', {
     class: 'g-needle-tip',
-    cx: f(CX), cy: f(CY - R_NDL), r: '2.5',
-    fill: '#ffffff', opacity: '0.85',
-    filter: `url(#glow-sm-${id})`
+    cx: f(ndlInit.x), cy: f(ndlInit.y), r: '2', fill: '#1d9bf0'
   }));
 
-  // Center hub
-  svg.appendChild(el('circle', {
-    cx: CX, cy: CY, r: '10',
-    fill: `url(#hub-grad-${id})`, stroke: '#1e3248', 'stroke-width': '1.2'
-  }));
-  svg.appendChild(el('circle', {
-    class: 'g-center-dot',
-    cx: CX, cy: CY, r: '4',
-    fill: '#3a5068'
-  }));
+  // ── Hub circles ───────────────────────────────────────────
+  svg.appendChild(el('circle', { cx: CX, cy: CY, r: '11', fill: '#071220', stroke: 'rgba(25,75,130,0.55)', 'stroke-width': '1.5' }));
+  svg.appendChild(el('circle', { cx: CX, cy: CY, r: '6',  fill: '#0b1e33', stroke: 'rgba(18,75,160,0.65)', 'stroke-width': '1' }));
+  svg.appendChild(el('circle', { class: 'g-center-dot', cx: CX, cy: CY, r: '3', fill: '#1d9bf0' }));
 
-  // RSI value — large, centered inside the arc
-  const valT = el('text', {
+  // ── RSI value text (inside arc) ───────────────────────────
+  const vt = el('text', {
     class: 'g-val-text',
-    x: CX, y: CY - 22,
-    'text-anchor': 'middle',
-    'dominant-baseline': 'middle',
-    fill: '#4a6070',
-    'font-size': '28',
+    x: CX, y: CY + 26,
+    'text-anchor': 'middle', 'dominant-baseline': 'middle',
+    fill: '#4a6070', 'font-size': '18',
     'font-family': '"JetBrains Mono",Consolas,monospace',
-    'font-weight': '700',
-    'letter-spacing': '-1'
+    'font-weight': '700', 'letter-spacing': '-0.5'
   });
-  valT.textContent = '—';
-  svg.appendChild(valT);
+  vt.textContent = '—';
+  svg.appendChild(vt);
 }
 
 function renderNeedle(id, rsi, color) {
@@ -426,30 +419,11 @@ function applyGaugeUI(tf, rsi) {
   if (ssigEl)  { ssigEl.textContent  = zone.signal;    ssigEl.style.color = color; }
   if (sbarEl)  { sbarEl.style.width  = rsi + '%';      sbarEl.style.background = color; }
 
-  // Update SVG internals: active arc fill + value text + needle tip color
+  // Update SVG internals: progress arc + value text
   const svgEl = document.getElementById(`gauge-${tf}`);
   if (svgEl) {
-    const arcFill   = svgEl.querySelector('.g-active-arc');
     const arcStroke = svgEl.querySelector('.g-active-stroke');
     const valText   = svgEl.querySelector('.g-val-text');
-    const tipDot    = svgEl.querySelector('.g-needle-tip');
-
-    if (rsi > 0.5) {
-      const arcPath = donutArc(R_OUT, R_IN, 180, rsiAngle(Math.max(0.5, rsi)));
-      if (arcFill) {
-        arcFill.setAttribute('d', arcPath);
-        arcFill.setAttribute('fill', color + '1e');
-        arcFill.setAttribute('opacity', '1');
-      }
-      if (arcStroke) {
-        arcStroke.setAttribute('d', donutArc(R_OUT + 0.5, R_OUT - 0.5, 180, rsiAngle(Math.max(0.5, rsi))));
-        arcStroke.setAttribute('stroke', color);
-        arcStroke.setAttribute('opacity', '0.7');
-      }
-    } else {
-      if (arcFill)   arcFill.setAttribute('opacity', '0');
-      if (arcStroke) arcStroke.setAttribute('opacity', '0');
-    }
 
     if (valText) {
       valText.textContent = rsi.toFixed(1);
@@ -1280,6 +1254,7 @@ async function updateRSIIndex() {
     const allDates = refData.dates.slice(RSI_PERIOD + 1);
     const dates    = allDates.slice(-minLen);
 
+    window._rsiIndexData = { avg: avgSeries, dates };
     drawRSIIndexChart(avgSeries, dates);
     updateRSIIndexCards(rsiCurrentMap);
 
@@ -1620,7 +1595,6 @@ function renderCompViews() {
   if (compTab === 'global')     renderGlobalView();
   else if (compTab === 'ai')    renderAIView();
   else if (compTab === 'cap')   renderCapView();
-  else if (compTab === 'vol')   { if (volData) renderVolumeChart(); }
 }
 
 async function updateComparisons() {
@@ -1643,9 +1617,7 @@ document.querySelectorAll('.comp-tab').forEach(tab => {
     document.getElementById('view-global').style.display = compTab === 'global' ? '' : 'none';
     document.getElementById('view-ai').style.display     = compTab === 'ai'     ? '' : 'none';
     document.getElementById('view-cap').style.display    = compTab === 'cap'    ? '' : 'none';
-    document.getElementById('view-vol').style.display    = compTab === 'vol'    ? '' : 'none';
-    if (compTab === 'vol') setTimeout(() => updateVolumeView(), 50);
-    else if (compData) setTimeout(() => renderCompViews(), 50);
+    if (compData) setTimeout(() => renderCompViews(), 50);
   });
 });
 
@@ -1722,8 +1694,8 @@ let _compResizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(_compResizeTimer);
   _compResizeTimer = setTimeout(() => {
-    if (compTab === 'vol') { if (volData) renderVolumeChart(); }
-    else if (compData) renderCompViews();
+    if (compData) renderCompViews();
+    if (volData && !document.getElementById('panel-vol')?.classList.contains('panel-hidden')) renderVolumeChart();
   }, 160);
 });
 
@@ -1785,22 +1757,35 @@ function renderVolumeChart() {
   const todayVol = vols[vols.length - 1];
   const todayMa  = mas[mas.length - 1];
   const pct      = todayMa ? ((todayVol - todayMa) / todayMa * 100) : 0;
+  const fmtB     = v => v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : (v / 1e6).toFixed(0) + 'M';
+  const pctStr   = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+  const subStr   = todayMa ? `Hoy: $${fmtB(todayVol)}  ·  MM${volMaPeriod}: $${fmtB(todayMa)}` : '';
 
   const pctEl        = document.getElementById('volPctValue');
   const subEl        = document.getElementById('volPctSub');
   const maDaysEl     = document.getElementById('volMaDays');
   const maPeriodLbl  = document.getElementById('volMaPeriodLabel');
 
-  if (pctEl) {
-    pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
-    pctEl.className   = 'vol-stat-value ' + (pct >= 0 ? 'vol-above' : 'vol-below');
-  }
-  if (subEl && todayMa) {
-    const fmtB = v => v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : (v / 1e6).toFixed(0) + 'M';
-    subEl.textContent = `Hoy: $${fmtB(todayVol)}  ·  MM: $${fmtB(todayMa)}`;
-  }
+  if (pctEl) { pctEl.textContent = pctStr; pctEl.className = 'vol-stat-value ' + (pct >= 0 ? 'vol-above' : 'vol-below'); }
+  if (subEl) subEl.textContent = subStr;
   if (maDaysEl) maDaysEl.textContent = volMaPeriod + ' días';
   if (maPeriodLbl) maPeriodLbl.textContent = volMaPeriod;
+
+  // Update dashboard volume strip
+  const dvsPctEl  = document.getElementById('dvsPct');
+  const dvsSubEl  = document.getElementById('dvsSub');
+  const dvsMaLbl  = document.getElementById('dvsMaLabel');
+  const dvsSlrVal = document.getElementById('dvsSliderVal');
+  const dvsSlr    = document.getElementById('dvsSlider');
+  if (dvsMaLbl)  dvsMaLbl.textContent  = volMaPeriod;
+  if (dvsSlrVal) dvsSlrVal.textContent = volMaPeriod + 'D';
+  if (dvsSlr)    dvsSlr.value          = volMaPeriod;
+  if (dvsPctEl)  { dvsPctEl.textContent = pctStr; dvsPctEl.className = 'dvs-pct font-mono ' + (pct >= 0 ? 'up' : 'down'); }
+  if (dvsSubEl)  dvsSubEl.textContent = subStr;
+
+  // Update volume panel header badge
+  const volPanelPct = document.getElementById('volPanelPct');
+  if (volPanelPct) { volPanelPct.textContent = pctStr; volPanelPct.style.color = pct >= 0 ? 'var(--green)' : 'var(--red)'; }
 
   drawVolumeChart(vols, dates, mas);
 }
@@ -1821,7 +1806,7 @@ function drawVolumeChart(vols, dates, mas) {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);
 
-  ctx.fillStyle = '#0b1728';
+  ctx.fillStyle = '#06101a';
   ctx.fillRect(0, 0, W, H);
 
   const pad   = { t: 28, b: 46, l: 70, r: 18 };
@@ -1835,27 +1820,27 @@ function drawVolumeChart(vols, dates, mas) {
 
   // Grid + Y-axis labels
   const gridN = 4;
-  ctx.font      = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.font      = '9px "JetBrains Mono",Consolas,monospace';
   ctx.textAlign = 'right';
   ctx.setLineDash([3, 6]);
   ctx.lineWidth = 1;
   for (let g = 1; g <= gridN; g++) {
     const v = maxV * g / gridN;
     const y = yOf(v);
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
     const lbl = v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : (v / 1e6).toFixed(0) + 'M';
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.fillText(lbl, pad.l - 6, y + 3);
   }
   ctx.setLineDash([]);
 
   // Baseline
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
   ctx.lineWidth   = 1;
   ctx.beginPath(); ctx.moveTo(pad.l, baseY); ctx.lineTo(W - pad.r, baseY); ctx.stroke();
 
-  // Bars
+  // Bars — same green/red as RSI zone colours
   const barW = Math.max(2, (cW / n) * 0.72);
   vols.forEach((v, i) => {
     const ma    = mas[i];
@@ -1863,19 +1848,29 @@ function drawVolumeChart(vols, dates, mas) {
     const x     = xOf(i) - barW / 2;
     const y     = yOf(v);
     const bH    = baseY - y;
-    ctx.fillStyle   = above ? 'rgba(34,197,94,0.70)'   : 'rgba(239,68,68,0.70)';
-    ctx.strokeStyle = above ? 'rgba(74,222,128,0.85)'  : 'rgba(252,165,165,0.85)';
-    ctx.lineWidth   = 0.5;
+    // fill with glow matching gauge zone colours
+    if (above) {
+      ctx.shadowColor = 'rgba(22,199,132,0.35)';
+      ctx.fillStyle   = 'rgba(22,199,132,0.55)';
+      ctx.strokeStyle = 'rgba(22,199,132,0.90)';
+    } else {
+      ctx.shadowColor = 'rgba(234,57,67,0.35)';
+      ctx.fillStyle   = 'rgba(234,57,67,0.55)';
+      ctx.strokeStyle = 'rgba(234,57,67,0.90)';
+    }
+    ctx.shadowBlur = 4;
+    ctx.lineWidth  = 0.5;
     ctx.fillRect(x, y, barW, bH);
     ctx.strokeRect(x, y, barW, bH);
+    ctx.shadowBlur = 0;
   });
 
-  // MA line
+  // MA line — amber glow matching EMA palette
   ctx.beginPath();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth   = 2;
-  ctx.shadowColor = 'rgba(245,158,11,0.5)';
-  ctx.shadowBlur  = 6;
+  ctx.strokeStyle = '#eab308';
+  ctx.lineWidth   = 1.5;
+  ctx.shadowColor = 'rgba(234,179,8,0.6)';
+  ctx.shadowBlur  = 8;
   let maStarted   = false;
   mas.forEach((ma, i) => {
     if (ma === null) return;
@@ -1887,40 +1882,42 @@ function drawVolumeChart(vols, dates, mas) {
   ctx.shadowBlur = 0;
 
   // X-axis date labels
-  ctx.fillStyle  = 'rgba(255,255,255,0.3)';
-  ctx.font       = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.fillStyle  = 'rgba(255,255,255,0.22)';
+  ctx.font       = '9px "JetBrains Mono",Consolas,monospace';
   ctx.textAlign  = 'center';
   const step     = Math.max(1, Math.floor(n / 8));
   for (let i = 0; i < n - 3; i += step) {
     const d = new Date(dates[i]);
     ctx.fillText(d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), xOf(i), baseY + 16);
   }
-  // Always show the last date aligned right
   ctx.textAlign = 'right';
   const dLast   = new Date(dates[n - 1]);
   ctx.fillText(dLast.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }), xOf(n - 1) + barW / 2, baseY + 16);
 
-  // MA legend line in top-left of chart area
+  // MA legend
   const lgX = pad.l + 6, lgY = pad.t + 14;
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth   = 2;
+  ctx.strokeStyle = '#eab308';
+  ctx.lineWidth   = 1.5;
+  ctx.shadowColor = 'rgba(234,179,8,0.5)';
+  ctx.shadowBlur  = 6;
   ctx.beginPath(); ctx.moveTo(lgX, lgY); ctx.lineTo(lgX + 18, lgY); ctx.stroke();
-  ctx.fillStyle  = 'rgba(255,255,255,0.55)';
-  ctx.font       = '10px "JetBrains Mono",Consolas,monospace';
+  ctx.shadowBlur = 0;
+  ctx.fillStyle  = 'rgba(255,255,255,0.45)';
+  ctx.font       = '9px "JetBrains Mono",Consolas,monospace';
   ctx.textAlign  = 'left';
   ctx.fillText('MM' + volMaPeriod, lgX + 22, lgY + 4);
 }
 
-// MA period slider
-(function initVolMaSlider() {
-  const slider = document.getElementById('volMaSlider');
-  if (!slider) return;
-  slider.addEventListener('input', function () {
-    volMaPeriod = parseInt(this.value);
-    const daysEl = document.getElementById('volMaDays');
-    if (daysEl) daysEl.textContent = volMaPeriod + ' días';
+// MA period sliders (Comparaciones + Dashboard strip — kept in sync)
+(function initVolMaSliders() {
+  function onPeriodChange(val) {
+    volMaPeriod = parseInt(val);
     if (volData) renderVolumeChart();
-  });
+  }
+  const s1 = document.getElementById('volMaSlider');
+  if (s1) s1.addEventListener('input', function () { onPeriodChange(this.value); });
+  const s2 = document.getElementById('dvsSlider');
+  if (s2) s2.addEventListener('input', function () { onPeriodChange(this.value); });
 })();
 
 updateVolumeView();
@@ -1930,7 +1927,8 @@ setInterval(() => { volData = null; updateVolumeView(); }, 300_000);
    GRÁFICOS MULTI-TF — Precio + EMAs (20, 50, 100, 200)
    ════════════════════════════════════════════════════════ */
 
-const CHART_DISPLAY_BARS = 120;
+let chartDisplayBars = 100;
+const chartEMAVisible = { 20: true, 50: true, 100: true, 200: true };
 let chartsData = {};
 let chartsBusy = false;
 
@@ -1976,12 +1974,12 @@ async function updateMultiTFCharts() {
 }
 
 function renderTFChart(tf, closes, times) {
-  const n    = Math.min(CHART_DISPLAY_BARS, closes.length);
+  const n    = Math.min(chartDisplayBars, closes.length);
   const sl   = arr => arr.slice(-n);
-  const ema20  = calcEMAArray(closes, 20);
-  const ema50  = calcEMAArray(closes, 50);
-  const ema100 = calcEMAArray(closes, 100);
-  const ema200 = calcEMAArray(closes, 200);
+  const ema20  = chartEMAVisible[20]  ? calcEMAArray(closes, 20)  : [];
+  const ema50  = chartEMAVisible[50]  ? calcEMAArray(closes, 50)  : [];
+  const ema100 = chartEMAVisible[100] ? calcEMAArray(closes, 100) : [];
+  const ema200 = chartEMAVisible[200] ? calcEMAArray(closes, 200) : [];
   drawPriceEMAChart(`chartCanvas-${tf}`, sl(closes), sl(times), sl(ema20), sl(ema50), sl(ema100), sl(ema200), tf);
   const priceEl = document.getElementById(`chartPrice-${tf}`);
   if (priceEl) priceEl.textContent = formatPrice(closes[closes.length - 1]);
@@ -2091,20 +2089,496 @@ window.addEventListener('resize', () => {
   }, 160);
 });
 
+// ─── FREE-FLOATING PANEL MANAGER ─────────────────────────
+// Legacy vars kept for any residual references
+const panelVisible = { charts: true, gauges: true, 'rsi-index': true, ema: true, vol: true };
+
+(function initFloatingPanels() {
+  const canvas = document.getElementById('dash-grid');
+  if (!canvas) return;
+
+  const G = 12, MIN_W = 280, MIN_H = 80;
+  let zTop = 100;
+
+  function cw() { return canvas.clientWidth || 1200; }
+
+  const DEFAULTS = {
+    'panel-charts':    () => ({ x: G,                           y: G,   w: Math.floor(cw()*0.60)-G, h: 490, visible: true, minimized: false }),
+    'panel-gauges':    () => ({ x: Math.floor(cw()*0.61)+G,    y: G,   w: Math.floor(cw()*0.37)-G, h: 490, visible: true, minimized: false }),
+    'panel-rsi-index': () => ({ x: G,                           y: 514, w: Math.floor(cw()*0.49)-G, h: 340, visible: true, minimized: false }),
+    'panel-ema':       () => ({ x: Math.floor(cw()*0.50)+G/2,  y: 514, w: Math.floor(cw()*0.49)-G, h: 340, visible: true, minimized: false }),
+    'panel-vol':       () => ({ x: G,                           y: 868, w: cw()-G*2,                h: 290, visible: true, minimized: false }),
+  };
+
+  function loadState(id)  { try { return JSON.parse(localStorage.getItem('sdash_fp_'+id)); } catch { return null; } }
+  function saveState(p) {
+    const min = p.classList.contains('panel-minimized');
+    localStorage.setItem('sdash_fp_'+p.id, JSON.stringify({
+      x: parseInt(p.style.left)||0, y: parseInt(p.style.top)||0,
+      w: parseInt(p.style.width)||300,
+      h: min ? (parseInt(p.dataset.savedH)||300) : (parseInt(p.style.height)||300),
+      minimized: min, visible: !p.classList.contains('panel-hidden'),
+    }));
+  }
+
+  function updateCanvasHeight() {
+    let maxBottom = 800;
+    canvas.querySelectorAll('.panel-block:not(.panel-hidden)').forEach(p => {
+      const top = parseInt(p.style.top)||0;
+      const h   = p.classList.contains('panel-minimized')
+                ? (p.querySelector('.panel-hdr')?.offsetHeight||44)
+                : (parseInt(p.style.height)||0);
+      maxBottom = Math.max(maxBottom, top + h + G*4);
+    });
+    canvas.style.minHeight = maxBottom + 'px';
+  }
+
+  function bringToFront(p) { p.style.zIndex = ++zTop; }
+
+  function triggerResize(p) {
+    setTimeout(() => {
+      const name = p.id.replace('panel-','');
+      if (name==='charts')    ['15m','1h','4h','1d'].forEach(tf => { const d=chartsData[tf]; if(d) renderTFChart(tf,d.closes,d.times); });
+      if (name==='vol' && volData) renderVolumeChart();
+      if (name==='rsi-index') { const c=document.getElementById('rsiIndexChart'); if(c&&window._rsiIndexData) drawRSIIndexChart(window._rsiIndexData.avg,window._rsiIndexData.dates); }
+    }, 30);
+  }
+
+  function setCtrlBtn(name, on) {
+    document.querySelectorAll(`.dpc-btn[data-panel="${name}"]`).forEach(b => b.classList.toggle('active', on));
+  }
+
+  // ── Minimize ──────────────────────────────────────────
+  function doMinimize(p) {
+    const isMin = p.classList.contains('panel-minimized');
+    const body  = p.querySelector('.panel-body');
+    const btn   = p.querySelector('.panel-btn-min');
+    if (isMin) {
+      p.classList.remove('panel-minimized');
+      if (body) body.style.display = '';
+      if (p.dataset.savedH) p.style.height = p.dataset.savedH;
+      if (btn) { btn.textContent='─'; btn.title='Minimizar'; }
+    } else {
+      if (p.classList.contains('panel-maximized')) doMaximize(p);
+      p.dataset.savedH = p.style.height;
+      p.classList.add('panel-minimized');
+      if (body) body.style.display = 'none';
+      p.style.height = 'auto';
+      if (btn) { btn.textContent='▶'; btn.title='Restaurar'; }
+    }
+    saveState(p); updateCanvasHeight();
+  }
+
+  // ── Maximize ──────────────────────────────────────────
+  function doMaximize(p) {
+    const isMax = p.classList.contains('panel-maximized');
+    const btn   = p.querySelector('.panel-btn-size');
+    if (isMax) {
+      p.classList.remove('panel-maximized');
+      p.style.left=p.dataset.savedX; p.style.top=p.dataset.savedY;
+      p.style.width=p.dataset.savedW; p.style.height=p.dataset.savedH;
+      if (btn) { btn.textContent='⊞'; btn.title='Maximizar'; }
+    } else {
+      if (p.classList.contains('panel-minimized')) {
+        p.classList.remove('panel-minimized');
+        const body=p.querySelector('.panel-body'); if(body) body.style.display='';
+        const mb=p.querySelector('.panel-btn-min'); if(mb){mb.textContent='─';mb.title='Minimizar';}
+      }
+      p.dataset.savedX=p.style.left; p.dataset.savedY=p.style.top;
+      p.dataset.savedW=p.style.width; p.dataset.savedH=p.style.height;
+      p.classList.add('panel-maximized');
+      const viewH = window.innerHeight - canvas.getBoundingClientRect().top - 8;
+      p.style.left='0px'; p.style.top='0px';
+      p.style.width=canvas.clientWidth+'px'; p.style.height=Math.max(viewH,500)+'px';
+      bringToFront(p);
+      if (btn) { btn.textContent='⊟'; btn.title='Restaurar'; }
+    }
+    saveState(p); updateCanvasHeight(); triggerResize(p);
+  }
+
+  // ── Show / Hide ───────────────────────────────────────
+  function doShow(name) {
+    const p = document.getElementById('panel-'+name); if(!p) return;
+    p.classList.remove('panel-hidden');
+    setCtrlBtn(name, true); bringToFront(p);
+    saveState(p); triggerResize(p);
+  }
+  function doHide(name) {
+    const p = document.getElementById('panel-'+name); if(!p) return;
+    p.classList.add('panel-hidden');
+    setCtrlBtn(name, false);
+    saveState(p); updateCanvasHeight();
+  }
+
+  // ── Build panel UI ────────────────────────────────────
+  function addMinBtn(p) {
+    const actions = p.querySelector('.panel-actions');
+    if (!actions || actions.querySelector('.panel-btn-min')) return;
+    const btn = document.createElement('button');
+    btn.className='panel-btn panel-btn-min'; btn.textContent='─'; btn.title='Minimizar';
+    actions.insertBefore(btn, actions.firstChild);
+  }
+
+  function addResizeHandles(p) {
+    if (p.querySelector('.resize-handle')) return;
+    ['n','s','e','w','ne','nw','se','sw'].forEach(dir => {
+      const h = document.createElement('div');
+      h.className=`resize-handle resize-${dir}`; h.dataset.dir=dir;
+      p.appendChild(h);
+    });
+  }
+
+  // ── Drag ──────────────────────────────────────────────
+  function setupDrag(p) {
+    p.querySelector('.panel-hdr')?.addEventListener('mousedown', e => {
+      if (e.button!==0) return;
+      if (e.target.closest('button,input,select,.gauge-asset-tabs')) return;
+      if (p.classList.contains('panel-maximized')) return;
+      e.preventDefault(); bringToFront(p);
+      const sX=e.clientX, sY=e.clientY, oL=parseInt(p.style.left)||0, oT=parseInt(p.style.top)||0;
+      p.classList.add('panel-dragging');
+      const onMove = ev => {
+        p.style.left = Math.max(0, oL+ev.clientX-sX)+'px';
+        p.style.top  = Math.max(0, oT+ev.clientY-sY)+'px';
+      };
+      const onUp = () => {
+        p.classList.remove('panel-dragging');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        saveState(p); updateCanvasHeight();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  // ── Resize ────────────────────────────────────────────
+  function setupResize(p) {
+    p.addEventListener('mousedown', e => {
+      const handle = e.target.closest('.resize-handle'); if (!handle) return;
+      if (p.classList.contains('panel-minimized')||p.classList.contains('panel-maximized')) return;
+      e.preventDefault(); e.stopPropagation(); bringToFront(p);
+      const dir=handle.dataset.dir, sX=e.clientX, sY=e.clientY;
+      const oL=parseInt(p.style.left)||0, oT=parseInt(p.style.top)||0;
+      const oW=parseInt(p.style.width)||300, oH=parseInt(p.style.height)||300;
+      p.classList.add('panel-resizing');
+      document.body.style.cursor=getComputedStyle(handle).cursor;
+      document.body.style.userSelect='none';
+      const onMove = ev => {
+        const dx=ev.clientX-sX, dy=ev.clientY-sY;
+        let l=oL,t=oT,w=oW,h=oH;
+        if(dir.includes('e')) w=Math.max(MIN_W,oW+dx);
+        if(dir.includes('s')) h=Math.max(MIN_H,oH+dy);
+        if(dir.includes('w')){ w=Math.max(MIN_W,oW-dx); l=oL+(oW-w); }
+        if(dir.includes('n')){ h=Math.max(MIN_H,oH-dy); t=oT+(oH-h); }
+        p.style.left=Math.max(0,l)+'px'; p.style.top=Math.max(0,t)+'px';
+        p.style.width=w+'px'; p.style.height=h+'px';
+      };
+      const onUp = () => {
+        p.classList.remove('panel-resizing');
+        document.body.style.cursor=''; document.body.style.userSelect='';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        saveState(p); updateCanvasHeight(); triggerResize(p);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  // ── Wire buttons ──────────────────────────────────────
+  function setupButtons(p) {
+    const name = p.id.replace('panel-','');
+    p.querySelector('.panel-btn-min')?.addEventListener('click', e => { e.stopPropagation(); doMinimize(p); });
+    const maxOld=p.querySelector('.panel-btn-size');
+    if (maxOld) {
+      const maxNew=maxOld.cloneNode(true);
+      maxNew.textContent='⊞'; maxNew.title='Maximizar';
+      maxNew.addEventListener('click', e => { e.stopPropagation(); doMaximize(p); });
+      maxOld.replaceWith(maxNew);
+    }
+    const clsOld=p.querySelector('.panel-btn-close');
+    if (clsOld) {
+      const clsNew=clsOld.cloneNode(true);
+      clsNew.addEventListener('click', e => { e.stopPropagation(); doHide(name); });
+      clsOld.replaceWith(clsNew);
+    }
+  }
+
+  // ── Apply state ───────────────────────────────────────
+  function applyState(p, s) {
+    p.style.left=s.x+'px'; p.style.top=s.y+'px';
+    p.style.width=s.w+'px'; p.style.height=s.h+'px';
+    const name=p.id.replace('panel-','');
+    if (!s.visible) { p.classList.add('panel-hidden'); setCtrlBtn(name,false); }
+    else setCtrlBtn(name, true);
+    if (s.minimized) {
+      p.dataset.savedH=s.h+'px'; p.classList.add('panel-minimized');
+      const body=p.querySelector('.panel-body'); if(body) body.style.display='none';
+      p.style.height='auto';
+      const btn=p.querySelector('.panel-btn-min'); if(btn){btn.textContent='▶';btn.title='Restaurar';}
+    }
+  }
+
+  // ── Control bar ───────────────────────────────────────
+  document.querySelectorAll('.dpc-btn[data-panel]').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const p=document.getElementById('panel-'+this.dataset.panel); if(!p) return;
+      p.classList.contains('panel-hidden') ? doShow(this.dataset.panel) : doHide(this.dataset.panel);
+    });
+  });
+
+  // ── Reset layout ──────────────────────────────────────
+  document.querySelectorAll('[data-reset-layout]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      canvas.querySelectorAll('.panel-block').forEach(p => {
+        localStorage.removeItem('sdash_fp_'+p.id);
+        p.classList.remove('panel-minimized','panel-maximized','panel-hidden');
+        const body=p.querySelector('.panel-body'); if(body) body.style.display='';
+        const st=(DEFAULTS[p.id]||DEFAULTS['panel-charts'])();
+        applyState(p, st); bringToFront(p);
+      });
+      updateCanvasHeight();
+    });
+  });
+
+  // ── Bootstrap ─────────────────────────────────────────
+  canvas.querySelectorAll('.panel-block').forEach(p => {
+    const state = loadState(p.id) || (DEFAULTS[p.id]||DEFAULTS['panel-charts'])();
+    addMinBtn(p); addResizeHandles(p);
+    applyState(p, state);
+    setupDrag(p); setupResize(p); setupButtons(p);
+    bringToFront(p);
+  });
+
+  updateCanvasHeight();
+
+  window.addEventListener('resize', () => {
+    canvas.querySelectorAll('.panel-block.panel-maximized').forEach(p => {
+      p.style.width  = canvas.clientWidth+'px';
+      p.style.height = Math.max(window.innerHeight-canvas.getBoundingClientRect().top-8, 500)+'px';
+    });
+  });
+})();
+
+// Bar count controls
+document.querySelectorAll('.charts-bars-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.charts-bars-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    chartDisplayBars = parseInt(this.dataset.bars, 10);
+    ['15m','1h','4h','1d'].forEach(tf => { const d = chartsData[tf]; if (d) renderTFChart(tf, d.closes, d.times); });
+  });
+});
+
+// EMA toggle controls
+document.querySelectorAll('.charts-ema-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const period = parseInt(this.dataset.ema, 10);
+    chartEMAVisible[period] = !chartEMAVisible[period];
+    this.classList.toggle('active', chartEMAVisible[period]);
+    ['15m','1h','4h','1d'].forEach(tf => { const d = chartsData[tf]; if (d) renderTFChart(tf, d.closes, d.times); });
+  });
+});
+
 updateMultiTFCharts();
 setInterval(() => { chartsData = {}; updateMultiTFCharts(); }, 300_000);
 
 /* ════════════════════════════════════════════════════════
-   NOTICIAS — RSS Multi-Feed
+   DOMINANCIA & MARKET CAP — CoinGecko Global
    ════════════════════════════════════════════════════════ */
 
-const NEWS_FEEDS = [
-  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', name: 'CoinDesk',      color: '#F7931A' },
-  { url: 'https://cointelegraph.com/rss',                   name: 'Cointelegraph', color: '#3AB0FF' },
-  { url: 'https://decrypt.co/feed',                         name: 'Decrypt',       color: '#5CC8D6' }
+async function fetchDominanceData() {
+  const r = await fetch('https://api.coingecko.com/api/v3/global');
+  if (!r.ok) throw new Error(`dominance HTTP ${r.status}`);
+  return (await r.json()).data;
+}
+
+function applyDominanceBar(data) {
+  const pct  = data.market_cap_percentage || {};
+  const mcap = (data.total_market_cap || {}).usd || 0;
+
+  const fmtPct = v => v != null ? v.toFixed(2) + '%' : '—';
+  const fmtMC  = v => {
+    if (v >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T';
+    if (v >= 1e9)  return '$' + (v / 1e9).toFixed(1) + 'B';
+    return '$' + v.toFixed(0);
+  };
+
+  const set = (id, txt, color) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = txt;
+    if (color) el.style.color = color;
+  };
+
+  set('domBTC',  fmtPct(pct.btc),  '#f7931a');
+  set('domETH',  fmtPct(pct.eth),  '#627eea');
+  set('domUSDT', fmtPct(pct.usdt), '#26a17b');
+  set('domMCap', fmtMC(mcap),      '#e8edf2');
+
+  const upd = document.getElementById('domUpdated');
+  if (upd) upd.textContent = 'act. ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function updateDominance() {
+  try {
+    const data = await fetchDominanceData();
+    applyDominanceBar(data);
+  } catch (e) {
+    console.warn('dominance fetch error:', e.message);
+  }
+}
+
+updateDominance();
+setInterval(updateDominance, 120_000); // cada 2 minutos (respeta rate-limit de CoinGecko)
+
+/* ════════════════════════════════════════════════════════
+   MERCADOS GLOBALES — Yahoo Finance
+   ════════════════════════════════════════════════════════ */
+
+const MARKET_GROUPS = [
+  {
+    label: 'Índices US',
+    items: [
+      { sym: '^GSPC', name: 'S&P 500'   },
+      { sym: '^IXIC', name: 'NASDAQ'    },
+      { sym: '^DJI',  name: 'Dow Jones' },
+    ]
+  },
+  {
+    label: 'Futuros',
+    items: [
+      { sym: 'ES=F', name: 'S&P Fut.' },
+      { sym: 'NQ=F', name: 'NQ Fut.'  },
+    ]
+  },
+  {
+    label: 'Asia',
+    items: [
+      { sym: '^N225',     name: 'Nikkei 225' },
+      { sym: '^HSI',      name: 'Hang Seng'  },
+      { sym: '000001.SS', name: 'Shanghai'   },
+    ]
+  },
+  {
+    label: 'Commodities',
+    items: [
+      { sym: 'GC=F', name: 'Oro'     },
+      { sym: 'CL=F', name: 'WTI Oil' },
+    ]
+  }
 ];
-const NEWS_PROXY = 'https://api.allorigins.win/raw?url=';
-let newsLoaded   = false;
+
+async function fetchOneMarket(item) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.sym)}?interval=1d&range=2d&includePrePost=false`;
+  const proxies = [
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ];
+  for (const mkProxy of proxies) {
+    try {
+      const res = await fetchWithTimeout(mkProxy(url), 8000);
+      if (!res.ok) continue;
+      const json = await res.json();
+      const meta = json?.chart?.result?.[0]?.meta;
+      if (!meta) continue;
+      const price = meta.regularMarketPrice;
+      const prev  = meta.chartPreviousClose ?? meta.previousClose;
+      const chg   = (price != null && prev) ? ((price - prev) / prev) * 100 : null;
+      return { sym: item.sym, price, chg };
+    } catch { /* try next proxy */ }
+  }
+  return { sym: item.sym, price: null, chg: null };
+}
+
+function renderMarkets(bySymbol) {
+  const grid  = document.getElementById('marketsGrid');
+  const updEl = document.getElementById('marketsUpdated');
+  if (!grid) return;
+
+  const fmtPrice = n => {
+    if (n == null) return '—';
+    if (n >= 10000) return n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+    return n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const fmtChg = n => {
+    if (n == null) return { text: '—', cls: 'flat' };
+    return { text: `${n > 0 ? '+' : ''}${n.toFixed(2)}%`, cls: n > 0 ? 'up' : n < 0 ? 'down' : 'flat' };
+  };
+
+  grid.innerHTML = MARKET_GROUPS.map(group => `
+    <div class="markets-group">
+      <span class="markets-group__label">${group.label}</span>
+      <div class="markets-row">
+        ${group.items.map(item => {
+          const q = bySymbol[item.sym];
+          const { text: chgText, cls: chgCls } = fmtChg(q?.chg);
+          return `<div class="market-chip">
+            <span class="market-chip__name">${item.name}</span>
+            <span class="market-chip__price">${fmtPrice(q?.price)}</span>
+            <span class="market-chip__chg ${chgCls}">${chgText}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+
+  if (updEl) updEl.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function updateMarkets() {
+  const grid = document.getElementById('marketsGrid');
+  if (grid && !grid.querySelector('.market-chip'))
+    grid.innerHTML = '<div class="markets-loading">Cargando mercados…</div>';
+  const allItems = MARKET_GROUPS.flatMap(g => g.items);
+  const results  = await Promise.allSettled(allItems.map(fetchOneMarket));
+  const bySymbol = {};
+  results.forEach(r => { if (r.status === 'fulfilled') bySymbol[r.value.sym] = r.value; });
+  if (Object.values(bySymbol).some(q => q.price != null)) {
+    renderMarkets(bySymbol);
+  } else {
+    if (grid) grid.innerHTML = '<div class="markets-error">No se pudieron obtener datos. Reintentando en 60s…</div>';
+  }
+}
+
+updateMarkets();
+setInterval(updateMarkets, 60_000);
+
+/* ════════════════════════════════════════════════════════
+   ACTUALIDAD — RSS Multi-Feed (Cripto / Globales / Argentinas)
+   ════════════════════════════════════════════════════════ */
+
+
+const NEWS_CATEGORIES = {
+  cripto: {
+    feeds: [
+      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', name: 'CoinDesk',      color: '#F7931A' },
+      { url: 'https://cointelegraph.com/rss',                   name: 'Cointelegraph', color: '#3AB0FF' },
+      { url: 'https://decrypt.co/feed',                         name: 'Decrypt',       color: '#5CC8D6' }
+    ],
+    loaded: false
+  },
+  globales: {
+    feeds: [
+      { url: 'https://feeds.reuters.com/Reuters/worldNews',      name: 'Reuters',      color: '#FF8000' },
+      { url: 'http://feeds.bbci.co.uk/news/world/rss.xml',       name: 'BBC',          color: '#BB1919' },
+      { url: 'https://www.theguardian.com/world/rss',            name: 'The Guardian', color: '#005689' }
+    ],
+    loaded: false
+  },
+  argentinas: {
+    feeds: [
+      { url: 'https://www.infobae.com/feeds/rss/',               name: 'Infobae',      color: '#E31E24' },
+      { url: 'https://www.lanacion.com.ar/arc/outboundfeeds/rss/', name: 'La Nación',  color: '#004A8F' },
+      { url: 'https://www.clarin.com/rss/ultimas-noticias/',     name: 'Clarín',       color: '#D4003C' }
+    ],
+    loaded: false
+  }
+};
+
+let activeNewsCat = 'cripto';
 
 function fetchWithTimeout(url, ms) {
   const ctrl = new AbortController();
@@ -2113,24 +2587,51 @@ function fetchWithTimeout(url, ms) {
 }
 
 async function fetchFeed(feed) {
+  // Primary: rss2json (designed for browser RSS, no proxy needed)
   try {
-    const res = await fetchWithTimeout(NEWS_PROXY + encodeURIComponent(feed.url), 9000);
-    if (!res.ok) return [];
-    const xml = new DOMParser().parseFromString(await res.text(), 'text/xml');
-    return Array.from(xml.querySelectorAll('item')).slice(0, 12).map(it => {
-      const linkEl = it.querySelector('link');
-      const link   = linkEl?.textContent?.trim()
-                  || linkEl?.getAttribute('href')
-                  || it.querySelector('guid')?.textContent?.trim() || '';
-      return {
-        title:  it.querySelector('title')?.textContent?.trim() || '',
-        link,
-        date:   new Date(it.querySelector('pubDate')?.textContent?.trim() || ''),
-        source: feed.name,
-        color:  feed.color
-      };
-    }).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
-  } catch { return []; }
+    const res = await fetchWithTimeout(
+      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&count=12`, 9000
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
+        return data.items.map(item => ({
+          title:  item.title?.trim() || '',
+          link:   item.link?.trim() || item.guid?.trim() || '',
+          date:   new Date(item.pubDate || ''),
+          source: feed.name,
+          color:  feed.color
+        })).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
+      }
+    }
+  } catch { /* fallthrough to proxy */ }
+
+  // Fallback: CORS proxies + raw XML parse
+  const proxies = [
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ];
+  for (const mkProxy of proxies) {
+    try {
+      const res = await fetchWithTimeout(mkProxy(feed.url), 8000);
+      if (!res.ok) continue;
+      const xml   = new DOMParser().parseFromString(await res.text(), 'text/xml');
+      const items = Array.from(xml.querySelectorAll('item')).slice(0, 12).map(it => {
+        const linkEl = it.querySelector('link');
+        const link   = linkEl?.textContent?.trim() || linkEl?.getAttribute('href')
+                    || it.querySelector('guid')?.textContent?.trim() || '';
+        return {
+          title:  it.querySelector('title')?.textContent?.trim() || '',
+          link,
+          date:   new Date(it.querySelector('pubDate')?.textContent?.trim() || ''),
+          source: feed.name,
+          color:  feed.color
+        };
+      }).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
+      if (items.length > 0) return items;
+    } catch { /* try next proxy */ }
+  }
+  return [];
 }
 
 function newsTimeAgo(date) {
@@ -2141,10 +2642,14 @@ function newsTimeAgo(date) {
   return `hace ${Math.floor(m / 1440)}d`;
 }
 
-function renderNewsGrid(items) {
-  const grid  = document.getElementById('newsGrid');
+function renderNewsGrid(cat, items) {
+  const grid  = document.getElementById(`newsGrid-${cat}`);
   const updEl = document.getElementById('newsUpdated');
   if (!grid) return;
+  if (items.length === 0) {
+    grid.innerHTML = '<div class="news-placeholder">No se pudieron cargar las noticias.</div>';
+    return;
+  }
   grid.innerHTML = items.map(n => `
     <a class="news-card" href="${n.link}" target="_blank" rel="noopener noreferrer" style="border-top-color:${n.color}">
       <span class="news-card__src" style="color:${n.color}">${n.source}</span>
@@ -2154,21 +2659,96 @@ function renderNewsGrid(items) {
         <span class="news-card__arr">↗</span>
       </div>
     </a>`).join('');
-  if (updEl) updEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  if (cat === activeNewsCat && updEl)
+    updEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
-async function updateNews() {
-  const grid    = document.getElementById('newsGrid');
-  const settled = await Promise.allSettled(NEWS_FEEDS.map(fetchFeed));
+async function loadNewsCategory(cat) {
+  const catData = NEWS_CATEGORIES[cat];
+  const grid    = document.getElementById(`newsGrid-${cat}`);
+  if (!grid) return;
+  if (!catData.loaded)
+    grid.innerHTML = '<div class="news-placeholder">Cargando noticias…</div>';
+  const settled = await Promise.allSettled(catData.feeds.map(fetchFeed));
   const all     = settled.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-  if (all.length === 0) {
-    if (!newsLoaded && grid)
-      grid.innerHTML = '<div class="news-placeholder">No se pudieron cargar las noticias. Reintentando en 8 min…</div>';
-    return;
-  }
-  newsLoaded = true;
-  renderNewsGrid(all.sort((a, b) => b.date - a.date).slice(0, 6));
+  catData.loaded = true;
+  renderNewsGrid(cat, all.sort((a, b) => b.date - a.date).slice(0, 6));
 }
 
-updateNews();
-setInterval(updateNews, 8 * 60 * 1000);
+function switchNewsTab(cat) {
+  activeNewsCat = cat;
+  document.querySelectorAll('.news-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === cat);
+  });
+  Object.keys(NEWS_CATEGORIES).forEach(c => {
+    const grid = document.getElementById(`newsGrid-${c}`);
+    if (grid) grid.classList.toggle('news-grid--hidden', c !== cat);
+  });
+  if (!NEWS_CATEGORIES[cat].loaded) loadNewsCategory(cat);
+  const updEl = document.getElementById('newsUpdated');
+  if (updEl && NEWS_CATEGORIES[cat].loaded)
+    updEl.textContent = '';
+}
+
+document.querySelectorAll('.news-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchNewsTab(btn.dataset.cat));
+});
+
+loadNewsCategory('cripto');
+setInterval(() => loadNewsCategory(activeNewsCat), 2 * 60_000);
+
+/* ════════════════════════════════════════════════════════
+   PANEL RESIZE OBSERVER — responsive content + canvas redraw
+   ════════════════════════════════════════════════════════ */
+(function initPanelResizeObserver() {
+  if (!window.ResizeObserver) return;
+
+  const DEBOUNCE = 80;
+  const timers   = {};
+
+  // Breakpoints based on panel body width
+  function psize(w) {
+    if (w < 300) return 'xs';
+    if (w < 480) return 'sm';
+    if (w < 700) return 'md';
+    return 'lg';
+  }
+
+  function redrawPanel(name) {
+    if (name === 'charts')
+      ['15m','1h','4h','1d'].forEach(tf => { const d = chartsData[tf]; if (d) renderTFChart(tf, d.closes, d.times); });
+    if (name === 'vol' && volData)
+      renderVolumeChart();
+    if (name === 'rsi-index' && window._rsiIndexData)
+      drawRSIIndexChart(window._rsiIndexData.avg, window._rsiIndexData.dates);
+  }
+
+  const ro = new ResizeObserver(entries => {
+    entries.forEach(entry => {
+      const body  = entry.target;
+      const panel = body.closest('.panel-block');
+      if (!panel) return;
+
+      const w    = Math.round(entry.contentRect.width);
+      const size = psize(w);
+
+      // Update CSS breakpoint attribute
+      if (panel.dataset.psize !== size) panel.dataset.psize = size;
+
+      // Debounce canvas redraw on every resize
+      const id = panel.id;
+      clearTimeout(timers[id]);
+      timers[id] = setTimeout(() => redrawPanel(id.replace('panel-', '')), DEBOUNCE);
+    });
+  });
+
+  // Observe every panel body
+  document.querySelectorAll('#dash-grid .panel-block').forEach(panel => {
+    const body = panel.querySelector('.panel-body');
+    if (body) {
+      // Set initial size attribute
+      panel.dataset.psize = psize(body.getBoundingClientRect().width || panel.clientWidth);
+      ro.observe(body);
+    }
+  });
+})();
