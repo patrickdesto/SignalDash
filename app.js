@@ -1617,7 +1617,11 @@ document.querySelectorAll('.comp-tab').forEach(tab => {
     document.getElementById('view-global').style.display = compTab === 'global' ? '' : 'none';
     document.getElementById('view-ai').style.display     = compTab === 'ai'     ? '' : 'none';
     document.getElementById('view-cap').style.display    = compTab === 'cap'    ? '' : 'none';
-    if (compData) setTimeout(() => renderCompViews(), 50);
+    document.getElementById('view-defi').style.display   = compTab === 'defi'   ? '' : 'none';
+    document.getElementById('view-bears').style.display  = compTab === 'bears'  ? '' : 'none';
+    if (compTab === 'defi') cargarDeFi();
+    else if (compTab === 'bears') cargarBears();
+    else if (compData) setTimeout(() => renderCompViews(), 50);
   });
 });
 
@@ -2473,24 +2477,25 @@ const MARKET_GROUPS = [
 
 async function fetchOneMarket(item) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.sym)}?interval=1d&range=2d&includePrePost=false`;
-  const proxies = [
-    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  ];
-  for (const mkProxy of proxies) {
-    try {
-      const res = await fetchWithTimeout(mkProxy(url), 8000);
-      if (!res.ok) continue;
-      const json = await res.json();
-      const meta = json?.chart?.result?.[0]?.meta;
-      if (!meta) continue;
-      const price = meta.regularMarketPrice;
-      const prev  = meta.chartPreviousClose ?? meta.previousClose;
-      const chg   = (price != null && prev) ? ((price - prev) / prev) * 100 : null;
-      return { sym: item.sym, price, chg };
-    } catch { /* try next proxy */ }
+  const tryProxy = async mkProxy => {
+    const res = await fetchWithTimeout(mkProxy(url), 4000);
+    if (!res.ok) throw new Error('not ok');
+    const json = await res.json();
+    const meta = json?.chart?.result?.[0]?.meta;
+    if (!meta) throw new Error('no meta');
+    const price = meta.regularMarketPrice;
+    const prev  = meta.chartPreviousClose ?? meta.previousClose;
+    const chg   = (price != null && prev) ? ((price - prev) / prev) * 100 : null;
+    return { sym: item.sym, price, chg };
+  };
+  try {
+    return await Promise.any([
+      tryProxy(u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`),
+      tryProxy(u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`),
+    ]);
+  } catch {
+    return { sym: item.sym, price: null, chg: null };
   }
-  return { sym: item.sym, price: null, chg: null };
 }
 
 function renderMarkets(bySymbol) {
@@ -2528,17 +2533,25 @@ function renderMarkets(bySymbol) {
   if (updEl) updEl.textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
+const MKT_CACHE_KEY = 'sdash_mkt_v1';
+
 async function updateMarkets() {
   const grid = document.getElementById('marketsGrid');
-  if (grid && !grid.querySelector('.market-chip'))
-    grid.innerHTML = '<div class="markets-loading">Cargando mercados…</div>';
+  // Show cache instantly while fetching
+  try {
+    const cached = JSON.parse(localStorage.getItem(MKT_CACHE_KEY) || 'null');
+    if (cached?.bySymbol) renderMarkets(cached.bySymbol);
+    else if (grid) grid.innerHTML = '<div class="markets-loading">Cargando mercados…</div>';
+  } catch { if (grid) grid.innerHTML = '<div class="markets-loading">Cargando mercados…</div>'; }
+
   const allItems = MARKET_GROUPS.flatMap(g => g.items);
   const results  = await Promise.allSettled(allItems.map(fetchOneMarket));
   const bySymbol = {};
   results.forEach(r => { if (r.status === 'fulfilled') bySymbol[r.value.sym] = r.value; });
   if (Object.values(bySymbol).some(q => q.price != null)) {
+    localStorage.setItem(MKT_CACHE_KEY, JSON.stringify({ bySymbol }));
     renderMarkets(bySymbol);
-  } else {
+  } else if (!grid?.querySelector('.market-chip')) {
     if (grid) grid.innerHTML = '<div class="markets-error">No se pudieron obtener datos. Reintentando en 60s…</div>';
   }
 }
@@ -2586,52 +2599,57 @@ function fetchWithTimeout(url, ms) {
   return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
 }
 
-async function fetchFeed(feed) {
-  // Primary: rss2json (designed for browser RSS, no proxy needed)
-  try {
-    const res = await fetchWithTimeout(
-      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&count=12`, 9000
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
-        return data.items.map(item => ({
-          title:  item.title?.trim() || '',
-          link:   item.link?.trim() || item.guid?.trim() || '',
-          date:   new Date(item.pubDate || ''),
-          source: feed.name,
-          color:  feed.color
-        })).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
-      }
-    }
-  } catch { /* fallthrough to proxy */ }
+function parseRSSXml(text, feed) {
+  const xml = new DOMParser().parseFromString(text, 'text/xml');
+  return Array.from(xml.querySelectorAll('item')).slice(0, 12).map(it => {
+    const linkEl = it.querySelector('link');
+    const link   = linkEl?.textContent?.trim() || linkEl?.getAttribute('href')
+                || it.querySelector('guid')?.textContent?.trim() || '';
+    return {
+      title:  it.querySelector('title')?.textContent?.trim() || '',
+      link,
+      date:   new Date(it.querySelector('pubDate')?.textContent?.trim() || ''),
+      source: feed.name,
+      color:  feed.color
+    };
+  }).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
+}
 
-  // Fallback: CORS proxies + raw XML parse
-  const proxies = [
-    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  ];
-  for (const mkProxy of proxies) {
-    try {
-      const res = await fetchWithTimeout(mkProxy(feed.url), 8000);
-      if (!res.ok) continue;
-      const xml   = new DOMParser().parseFromString(await res.text(), 'text/xml');
-      const items = Array.from(xml.querySelectorAll('item')).slice(0, 12).map(it => {
-        const linkEl = it.querySelector('link');
-        const link   = linkEl?.textContent?.trim() || linkEl?.getAttribute('href')
-                    || it.querySelector('guid')?.textContent?.trim() || '';
-        return {
-          title:  it.querySelector('title')?.textContent?.trim() || '',
-          link,
-          date:   new Date(it.querySelector('pubDate')?.textContent?.trim() || ''),
-          source: feed.name,
-          color:  feed.color
-        };
-      }).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
-      if (items.length > 0) return items;
-    } catch { /* try next proxy */ }
+async function fetchFeed(feed) {
+  // Try rss2json + both CORS proxies in parallel — fastest wins
+  const tryRss2json = async () => {
+    const res = await fetchWithTimeout(
+      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&count=12`, 4000
+    );
+    if (!res.ok) throw new Error('fail');
+    const data = await res.json();
+    if (data.status !== 'ok' || !data.items?.length) throw new Error('empty');
+    return data.items.map(item => ({
+      title:  item.title?.trim() || '',
+      link:   item.link?.trim() || item.guid?.trim() || '',
+      date:   new Date(item.pubDate || ''),
+      source: feed.name,
+      color:  feed.color
+    })).filter(n => n.title && n.link && !isNaN(n.date.getTime()));
+  };
+
+  const tryProxy = async mkProxy => {
+    const res = await fetchWithTimeout(mkProxy(feed.url), 4000);
+    if (!res.ok) throw new Error('fail');
+    const items = parseRSSXml(await res.text(), feed);
+    if (!items.length) throw new Error('empty');
+    return items;
+  };
+
+  try {
+    return await Promise.any([
+      tryRss2json(),
+      tryProxy(u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`),
+      tryProxy(u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`),
+    ]);
+  } catch {
+    return [];
   }
-  return [];
 }
 
 function newsTimeAgo(date) {
@@ -2667,12 +2685,27 @@ async function loadNewsCategory(cat) {
   const catData = NEWS_CATEGORIES[cat];
   const grid    = document.getElementById(`newsGrid-${cat}`);
   if (!grid) return;
-  if (!catData.loaded)
-    grid.innerHTML = '<div class="news-placeholder">Cargando noticias…</div>';
+  // Show cache instantly
+  const cacheKey = `sdash_news_${cat}`;
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached?.items?.length) {
+      renderNewsGrid(cat, cached.items.map(n => ({ ...n, date: new Date(n.date) })));
+    } else {
+      grid.innerHTML = '<div class="news-placeholder">Cargando noticias…</div>';
+    }
+  } catch { grid.innerHTML = '<div class="news-placeholder">Cargando noticias…</div>'; }
+
   const settled = await Promise.allSettled(catData.feeds.map(fetchFeed));
   const all     = settled.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+  const items   = all.sort((a, b) => b.date - a.date).slice(0, 6);
   catData.loaded = true;
-  renderNewsGrid(cat, all.sort((a, b) => b.date - a.date).slice(0, 6));
+  if (items.length) {
+    localStorage.setItem(cacheKey, JSON.stringify({ items: items.map(n => ({ ...n, date: n.date.toISOString() })) }));
+    renderNewsGrid(cat, items);
+  } else if (!grid.querySelector('.news-card')) {
+    renderNewsGrid(cat, []);
+  }
 }
 
 function switchNewsTab(cat) {
@@ -2696,6 +2729,271 @@ document.querySelectorAll('.news-tab').forEach(btn => {
 
 loadNewsCategory('cripto');
 setInterval(() => loadNewsCategory(activeNewsCat), 2 * 60_000);
+
+/* ════════════════════════════════════════════════════════
+   COMPARACIONES — DeFi Charts (DefiLlama + CoinGecko)
+   ════════════════════════════════════════════════════════ */
+
+const DEFI_COLORS = {
+  aave:  { border: '#B6509E', bg: 'rgba(182,80,158,0.15)' },
+  uni:   { border: '#FF007A', bg: 'rgba(255,0,122,0.15)'  },
+  lido:  { border: '#00A3FF', bg: 'rgba(0,163,255,0.15)'  },
+  curve: { border: '#FFCC00', bg: 'rgba(255,204,0,0.15)'  },
+};
+
+let defiLoaded = false;
+let bearLoaded = false;
+
+async function cargarDeFi() {
+  if (defiLoaded) return;
+  try {
+    await Promise.all([cargarDefiTVL(), cargarDefiRatio(), cargarDefiDominancia(), cargarDefiFees()]);
+    defiLoaded = true;
+  } catch (e) {
+    const el = document.getElementById('defiLoading');
+    if (el) { el.textContent = 'Error cargando datos DeFi.'; el.style.display = 'flex'; }
+  }
+}
+
+async function cargarDefiTVL() {
+  const loadingEl = document.getElementById('defiLoading');
+  if (loadingEl) loadingEl.style.display = 'flex';
+  const [aave, uni, lido, curve] = await Promise.all([
+    fetch('https://api.llama.fi/protocol/aave').then(r => r.json()),
+    fetch('https://api.llama.fi/protocol/uniswap').then(r => r.json()),
+    fetch('https://api.llama.fi/protocol/lido').then(r => r.json()),
+    fetch('https://api.llama.fi/protocol/curve').then(r => r.json()),
+  ]);
+  if (loadingEl) loadingEl.style.display = 'none';
+  const recortar = arr => (arr || []).slice(-365);
+  const labels = recortar(aave.tvl).map(d =>
+    new Date(d.date * 1000).toLocaleDateString('es-AR', { month: 'short', year: '2-digit' })
+  );
+  const gridColor = 'rgba(255,255,255,0.05)';
+  new Chart(document.getElementById('defiTvlChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'AAVE',  data: recortar(aave.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)),  borderColor: DEFI_COLORS.aave.border,  backgroundColor: DEFI_COLORS.aave.bg,  fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'UNI',   data: recortar(uni.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)),   borderColor: DEFI_COLORS.uni.border,   backgroundColor: DEFI_COLORS.uni.bg,   fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'LIDO',  data: recortar(lido.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)),  borderColor: DEFI_COLORS.lido.border,  backgroundColor: DEFI_COLORS.lido.bg,  fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'CURVE', data: recortar(curve.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)), borderColor: DEFI_COLORS.curve.border, backgroundColor: DEFI_COLORS.curve.bg, fill: true, tension: 0.3, pointRadius: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#a0aec0', boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#6b7280', maxTicksLimit: 12 }, grid: { color: gridColor } },
+        y: { ticks: { color: '#6b7280', callback: v => '$' + v + 'B' }, grid: { color: gridColor } },
+      }
+    }
+  });
+}
+
+async function cargarDefiRatio() {
+  const [protocolos, precios] = await Promise.all([
+    fetch('https://api.llama.fi/protocols').then(r => r.json()),
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=aave,uniswap,lido-dao,curve-dao-token&vs_currencies=usd&include_market_cap=true').then(r => r.json()),
+  ]);
+  const getTVL = nombre => protocolos.find(p => p.name.toLowerCase() === nombre)?.tvl || 1;
+  const datos = [
+    { label: 'AAVE',  ratio: (precios.aave?.usd_market_cap / getTVL('aave')).toFixed(2),                    color: DEFI_COLORS.aave.border  },
+    { label: 'UNI',   ratio: (precios.uniswap?.usd_market_cap / getTVL('uniswap')).toFixed(2),              color: DEFI_COLORS.uni.border   },
+    { label: 'LIDO',  ratio: (precios['lido-dao']?.usd_market_cap / getTVL('lido')).toFixed(2),             color: DEFI_COLORS.lido.border  },
+    { label: 'CURVE', ratio: (precios['curve-dao-token']?.usd_market_cap / getTVL('curve')).toFixed(2),     color: DEFI_COLORS.curve.border },
+  ];
+  new Chart(document.getElementById('defiRatioChart'), {
+    type: 'bar',
+    data: {
+      labels: datos.map(d => d.label),
+      datasets: [{ label: 'MC / TVL', data: datos.map(d => d.ratio), backgroundColor: datos.map(d => d.color), borderRadius: 8 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' Ratio: ' + ctx.raw } } },
+      scales: {
+        x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#a0aec0', font: { size: 13 } }, grid: { display: false } },
+      }
+    }
+  });
+}
+
+async function cargarDefiDominancia() {
+  const protocolos = await fetch('https://api.llama.fi/protocols').then(r => r.json());
+  const getTVL = nombre => protocolos.find(p => p.name.toLowerCase() === nombre)?.tvl || 0;
+  const tvls = [
+    { label: 'AAVE',  tvl: getTVL('aave'),    color: DEFI_COLORS.aave.border  },
+    { label: 'UNI',   tvl: getTVL('uniswap'), color: DEFI_COLORS.uni.border   },
+    { label: 'LIDO',  tvl: getTVL('lido'),    color: DEFI_COLORS.lido.border  },
+    { label: 'CURVE', tvl: getTVL('curve'),   color: DEFI_COLORS.curve.border },
+  ];
+  new Chart(document.getElementById('defiDominanciaChart'), {
+    type: 'doughnut',
+    data: {
+      labels: tvls.map(d => d.label),
+      datasets: [{ data: tvls.map(d => (d.tvl / 1e9).toFixed(2)), backgroundColor: tvls.map(d => d.color), borderColor: 'rgba(255,255,255,0.08)', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#a0aec0', font: { size: 13 } } },
+        tooltip: { callbacks: { label: ctx => ' $' + ctx.raw + 'B TVL' } },
+      }
+    }
+  });
+}
+
+async function cargarDefiFees() {
+  const data = await fetch('https://api.llama.fi/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true').then(r => r.json());
+  const buscar = nombre => data.protocols?.find(p => p.name.toLowerCase().includes(nombre));
+  const protocolos = [
+    { label: 'AAVE',  data: buscar('aave'),    color: DEFI_COLORS.aave.border  },
+    { label: 'UNI',   data: buscar('uniswap'), color: DEFI_COLORS.uni.border   },
+    { label: 'LIDO',  data: buscar('lido'),    color: DEFI_COLORS.lido.border  },
+    { label: 'CURVE', data: buscar('curve'),   color: DEFI_COLORS.curve.border },
+  ];
+  new Chart(document.getElementById('defiFeesChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Fees 24h', 'Fees 7d', 'Fees 30d'],
+      datasets: protocolos.map(p => ({
+        label: p.label,
+        data: [((p.data?.total24h || 0) / 1e6).toFixed(2), ((p.data?.total7d || 0) / 1e6).toFixed(2), ((p.data?.total30d || 0) / 1e6).toFixed(2)],
+        backgroundColor: p.color, borderRadius: 6,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#a0aec0', boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#6b7280', callback: v => '$' + v + 'M' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      }
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   COMPARACIONES — Bear Markets BTC (Binance API)
+   ════════════════════════════════════════════════════════ */
+
+const BEAR_MARKETS = [
+  { label: 'Bear 2017-2018', inicio: '2017-12-17', fin: '2018-12-15', color: '#FF6B6B' },
+  { label: 'Bear 2021-2022', inicio: '2021-11-09', fin: '2022-11-09', color: '#FFA500' },
+  { label: 'Actual 2025-?',  inicio: '2025-10-06', fin: null,         color: '#00E5FF' },
+];
+
+async function getBTCPrices(inicio, fin) {
+  const startMs = new Date(inicio).getTime();
+  const endMs   = fin ? new Date(fin).getTime() : Date.now();
+  const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=${startMs}&endTime=${endMs}&limit=1000`;
+  const data = await fetch(url).then(r => r.json());
+  return data.map(k => parseFloat(k[4]));
+}
+
+function calcBearDrop(precios) {
+  const base = precios[0];
+  return precios.map(p => parseFloat(((p - base) / base * 100).toFixed(2)));
+}
+
+function stdDev(vals) {
+  const media = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const varianza = vals.reduce((a, b) => a + Math.pow(b - media, 2), 0) / vals.length;
+  return { media, desv: Math.sqrt(varianza) };
+}
+
+let bearChartInstance = null;
+
+async function cargarBears() {
+  if (bearLoaded) return;
+  const loadingEl = document.getElementById('bearLoading');
+  if (loadingEl) loadingEl.style.display = 'flex';
+
+  try {
+    const datasets   = [];
+    const duraciones = [];
+    let maxDias = 0;
+
+    for (const bear of BEAR_MARKETS) {
+      const precios = await getBTCPrices(bear.inicio, bear.fin);
+      const caidas  = calcBearDrop(precios);
+      const dias    = caidas.length;
+      if (bear.fin) duraciones.push(dias);
+      if (dias > maxDias) maxDias = dias;
+      datasets.push({
+        label: bear.label,
+        data: caidas,
+        borderColor: bear.color,
+        backgroundColor: 'transparent',
+        borderWidth: bear.fin ? 2 : 3,
+        borderDash: bear.fin ? [] : [6, 3],
+        pointRadius: 0,
+        tension: 0.3,
+      });
+    }
+
+    const { media, desv } = stdDev(duraciones);
+    const limMin = Math.round(media - desv);
+    const limMax = Math.round(media + desv);
+    const diasActual = Math.round((Date.now() - new Date('2025-10-06').getTime()) / 86400000);
+
+    // Zona esperada (banda sombreada)
+    datasets.push({
+      label: `Zona esperada (${limMin}–${limMax} días)`,
+      data: Array.from({ length: maxDias }, (_, i) => (i >= limMin && i <= limMax) ? 10 : null),
+      borderColor: 'rgba(88,166,255,0)',
+      backgroundColor: 'rgba(88,166,255,0.08)',
+      fill: true,
+      pointRadius: 0,
+      borderWidth: 0,
+    });
+
+    // Punto día actual
+    datasets.push({
+      label: `Hoy (día ${diasActual})`,
+      data: Array.from({ length: maxDias }, (_, i) => i === diasActual ? 0 : null),
+      borderColor: '#00FF99',
+      backgroundColor: '#00FF99',
+      pointRadius: Array.from({ length: maxDias }, (_, i) => i === diasActual ? 7 : 0),
+      borderWidth: 2,
+      showLine: false,
+    });
+
+    const labels = Array.from({ length: maxDias }, (_, i) => `Día ${i + 1}`);
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (bearChartInstance) bearChartInstance.destroy();
+    bearChartInstance = new Chart(document.getElementById('bearChart'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#a0aec0', font: { size: 12 }, boxWidth: 14 } },
+          tooltip: { callbacks: { label: ctx => ctx.raw !== null ? ` ${ctx.dataset.label}: ${ctx.raw}%` : '' } },
+        },
+        scales: {
+          x: { ticks: { color: '#6b7280', maxTicksLimit: 15 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#a0aec0', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        },
+      },
+    });
+
+    document.getElementById('bearPromDias').textContent   = Math.round(media) + ' días';
+    document.getElementById('bearDesv').textContent       = '± ' + Math.round(desv) + ' días';
+    document.getElementById('bearDiasActual').textContent = diasActual + ' días';
+    document.getElementById('bearPct').textContent        = Math.round(diasActual / media * 100) + '%';
+
+    bearLoaded = true;
+  } catch (e) {
+    if (loadingEl) { loadingEl.textContent = 'Error cargando datos.'; loadingEl.style.display = 'flex'; }
+  }
+}
 
 /* ════════════════════════════════════════════════════════
    PANEL RESIZE OBSERVER — responsive content + canvas redraw

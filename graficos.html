@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>DeFi Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background: #0d1117; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
+    .chart-container { width: 100%; max-width: 900px; margin: 40px auto; background: #161b22; border-radius: 12px; padding: 20px; }
+    h2 { text-align: center; color: #58a6ff; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+  <div class="chart-container">
+    <h2>TVL Histórico</h2>
+    <canvas id="tvlChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h2>Market Cap / TVL Ratio</h2>
+    <canvas id="ratioChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h2>Fees Generados</h2>
+    <canvas id="feesChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h2>Dominancia TVL</h2>
+    <canvas id="dominanciaChart"></canvas>
+  </div>
+
+<script>
+// ─── COLORES ───────────────────────────────────────────
+const colores = {
+  aave:  { border: '#B6509E', bg: 'rgba(182,80,158,0.2)' },
+  uni:   { border: '#FF007A', bg: 'rgba(255,0,122,0.2)' },
+  lido:  { border: '#00A3FF', bg: 'rgba(0,163,255,0.2)' },
+  curve: { border: '#FFCC00', bg: 'rgba(255,204,0,0.2)' }
+}
+
+// ─── 1. TVL HISTÓRICO ──────────────────────────────────
+async function cargarTVL() {
+  const [aave, uni, lido, curve] = await Promise.all([
+    fetch('https://api.llama.fi/protocol/aave').then(r => r.json()),
+    fetch('https://api.llama.fi/protocol/uniswap').then(r => r.json()),
+    fetch('https://api.llama.fi/protocol/lido').then(r => r.json()),
+    fetch('https://api.llama.fi/protocol/curve').then(r => r.json())
+  ])
+
+  // Últimos 365 días
+  const recortar = (arr) => arr.slice(-365)
+  const aaveTVL  = recortar(aave.tvl)
+  const labels   = aaveTVL.map(d => new Date(d.date * 1000).toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }))
+
+  new Chart(document.getElementById('tvlChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'AAVE',  data: recortar(aave.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)),  borderColor: colores.aave.border,  backgroundColor: colores.aave.bg,  fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'UNI',   data: recortar(uni.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)),   borderColor: colores.uni.border,   backgroundColor: colores.uni.bg,   fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'LIDO',  data: recortar(lido.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)),  borderColor: colores.lido.border,  backgroundColor: colores.lido.bg,  fill: true, tension: 0.3, pointRadius: 0 },
+        { label: 'CURVE', data: recortar(curve.tvl).map(d => (d.totalLiquidityUSD / 1e9).toFixed(2)), borderColor: colores.curve.border, backgroundColor: colores.curve.bg, fill: true, tension: 0.3, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#fff' } } },
+      scales: {
+        x: { ticks: { color: '#aaa', maxTicksLimit: 12 }, grid: { color: '#222' } },
+        y: { ticks: { color: '#aaa', callback: v => '$' + v + 'B' }, grid: { color: '#222' } }
+      }
+    }
+  })
+}
+
+// ─── 2. MARKET CAP / TVL RATIO ─────────────────────────
+async function cargarRatio() {
+  const [protocolos, precios] = await Promise.all([
+    fetch('https://api.llama.fi/protocols').then(r => r.json()),
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=aave,uniswap,lido-dao,curve-dao-token&vs_currencies=usd&include_market_cap=true').then(r => r.json())
+  ])
+
+  const getTVL = (nombre) => protocolos.find(p => p.name.toLowerCase() === nombre)?.tvl || 0
+
+  const datos = [
+    { label: 'AAVE',  ratio: (precios['aave']['usd_market_cap'] / getTVL('aave')).toFixed(2),  color: colores.aave.border },
+    { label: 'UNI',   ratio: (precios['uniswap']['usd_market_cap'] / getTVL('uniswap')).toFixed(2), color: colores.uni.border },
+    { label: 'LIDO',  ratio: (precios['lido-dao']['usd_market_cap'] / getTVL('lido')).toFixed(2),  color: colores.lido.border },
+    { label: 'CURVE', ratio: (precios['curve-dao-token']['usd_market_cap'] / getTVL('curve')).toFixed(2), color: colores.curve.border }
+  ]
+
+  new Chart(document.getElementById('ratioChart'), {
+    type: 'bar',
+    data: {
+      labels: datos.map(d => d.label),
+      datasets: [{
+        label: 'MC / TVL',
+        data: datos.map(d => d.ratio),
+        backgroundColor: datos.map(d => d.color),
+        borderRadius: 8
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' Ratio: ' + ctx.raw } }
+      },
+      scales: {
+        x: { ticks: { color: '#aaa' }, grid: { color: '#222' } },
+        y: { ticks: { color: '#fff', font: { size: 14 } }, grid: { display: false } }
+      }
+    }
+  })
+}
+
+// ─── 3. FEES GENERADOS ─────────────────────────────────
+async function cargarFees() {
+  const data = await fetch('https://api.llama.fi/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true').then(r => r.json())
+
+  const buscar = (nombre) => data.protocols?.find(p => p.name.toLowerCase().includes(nombre))
+
+  const protocolos = [
+    { label: 'AAVE',  data: buscar('aave'),   color: colores.aave.border },
+    { label: 'UNI',   data: buscar('uniswap'), color: colores.uni.border },
+    { label: 'LIDO',  data: buscar('lido'),    color: colores.lido.border },
+    { label: 'CURVE', data: buscar('curve'),   color: colores.curve.border }
+  ]
+
+  new Chart(document.getElementById('feesChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Fees 24h', 'Fees 7d', 'Fees 30d'],
+      datasets: protocolos.map(p => ({
+        label: p.label,
+        data: [
+          ((p.data?.total24h || 0) / 1e6).toFixed(2),
+          ((p.data?.total7d  || 0) / 1e6).toFixed(2),
+          ((p.data?.total30d || 0) / 1e6).toFixed(2)
+        ],
+        backgroundColor: p.color,
+        borderRadius: 6
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#fff' } } },
+      scales: {
+        x: { ticks: { color: '#aaa' }, grid: { color: '#222' } },
+        y: { ticks: { color: '#aaa', callback: v => '$' + v + 'M' }, grid: { color: '#222' } }
+      }
+    }
+  })
+}
+
+// ─── 4. DOMINANCIA TVL ─────────────────────────────────
+async function cargarDominancia() {
+  const protocolos = await fetch('https://api.llama.fi/protocols').then(r => r.json())
+
+  const getTVL = (nombre) => protocolos.find(p => p.name.toLowerCase() === nombre)?.tvl || 0
+
+  const tvls = [
+    { label: 'AAVE',  tvl: getTVL('aave'),    color: colores.aave.border },
+    { label: 'UNI',   tvl: getTVL('uniswap'), color: colores.uni.border },
+    { label: 'LIDO',  tvl: getTVL('lido'),    color: colores.lido.border },
+    { label: 'CURVE', tvl: getTVL('curve'),   color: colores.curve.border }
+  ]
+
+  new Chart(document.getElementById('dominanciaChart'), {
+    type: 'doughnut',
+    data: {
+      labels: tvls.map(d => d.label),
+      datasets: [{
+        data: tvls.map(d => (d.tvl / 1e9).toFixed(2)),
+        backgroundColor: tvls.map(d => d.color),
+        borderColor: '#161b22',
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#fff', font: { size: 14 } } },
+        tooltip: { callbacks: { label: ctx => ' $' + ctx.raw + 'B TVL' } }
+      }
+    }
+  })
+}
+
+// ─── INICIAR TODO ──────────────────────────────────────
+cargarTVL()
+cargarRatio()
+cargarFees()
+cargarDominancia()
+</script>
+
+</body>
+</html>

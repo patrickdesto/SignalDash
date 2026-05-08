@@ -1079,6 +1079,39 @@ body {
 
 .comp-view { display: flex; flex-direction: column; gap: 14px; }
 
+/* ── Bear Markets stats ── */
+.bear-stats {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding: 20px 0 4px;
+}
+.bear-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.bear-stat__val  { font-size: 1.4rem; font-weight: 700; color: var(--accent); font-family: var(--font-mono); }
+.bear-stat__lbl  { font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.04em; }
+
+/* ── DeFi tab grid ── */
+.defi-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.defi-charts-grid > .comp-chart-card:nth-child(1),
+.defi-charts-grid > .comp-chart-card:nth-child(4) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 860px) {
+  .defi-charts-grid { grid-template-columns: 1fr; }
+  .defi-charts-grid > .comp-chart-card:nth-child(1),
+  .defi-charts-grid > .comp-chart-card:nth-child(4) { grid-column: auto; }
+}
+
 /* ── Period selector ── */
 .period-sel {
   display: flex;

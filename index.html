@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -595,6 +596,8 @@
         <button class="comp-tab active" data-tab="global">Vista Global</button>
         <button class="comp-tab" data-tab="ai">✦ Crypto AI</button>
         <button class="comp-tab" data-tab="cap">◈ Ranking Cap.</button>
+        <button class="comp-tab" data-tab="defi">◈ DeFi</button>
+        <button class="comp-tab" data-tab="bears">📉 Bears BTC</button>
       </div>
       <div class="comp-topbar__right">
         <span class="comp-live-badge"><span class="comp-live-dot"></span>Live · 10s</span>
@@ -724,6 +727,105 @@
       </div>
     </div>
 
+    <!-- DeFi -->
+    <div class="comp-view" id="view-defi" style="display:none">
+      <div class="defi-charts-grid">
+
+        <div class="comp-chart-card">
+          <div class="comp-chart-hdr">
+            <div class="comp-chart-hdr__left">
+              <span class="comp-chart-title">◈ TVL Histórico</span>
+              <span class="comp-chart-sub">últimos 365 días · miles de millones USD</span>
+            </div>
+          </div>
+          <div class="comp-chart-body">
+            <div class="comp-chart-wrap" style="height:240px">
+              <canvas id="defiTvlChart"></canvas>
+              <div class="comp-loading" id="defiLoading">Cargando datos DeFi…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="comp-chart-card">
+          <div class="comp-chart-hdr">
+            <div class="comp-chart-hdr__left">
+              <span class="comp-chart-title">◈ Market Cap / TVL Ratio</span>
+              <span class="comp-chart-sub">valoración relativa al TVL bloqueado</span>
+            </div>
+          </div>
+          <div class="comp-chart-body">
+            <div class="comp-chart-wrap" style="height:180px">
+              <canvas id="defiRatioChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="comp-chart-card">
+          <div class="comp-chart-hdr">
+            <div class="comp-chart-hdr__left">
+              <span class="comp-chart-title">◈ Dominancia TVL</span>
+              <span class="comp-chart-sub">participación en TVL total del grupo</span>
+            </div>
+          </div>
+          <div class="comp-chart-body">
+            <div class="comp-chart-wrap" style="height:180px">
+              <canvas id="defiDominanciaChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="comp-chart-card">
+          <div class="comp-chart-hdr">
+            <div class="comp-chart-hdr__left">
+              <span class="comp-chart-title">◈ Fees Generados</span>
+              <span class="comp-chart-sub">en millones USD · 24h / 7d / 30d</span>
+            </div>
+          </div>
+          <div class="comp-chart-body">
+            <div class="comp-chart-wrap" style="height:240px">
+              <canvas id="defiFeesChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bear Markets BTC -->
+    <div class="comp-view" id="view-bears" style="display:none">
+      <div class="comp-chart-card">
+        <div class="comp-chart-hdr">
+          <div class="comp-chart-hdr__left">
+            <span class="comp-chart-title">📉 Comparación Bear Markets BTC</span>
+            <span class="comp-chart-sub">caída % desde el inicio de cada mercado bajista · desviación estándar de duración</span>
+          </div>
+        </div>
+        <div class="comp-chart-body">
+          <div class="comp-chart-wrap" style="height:320px">
+            <canvas id="bearChart"></canvas>
+            <div class="comp-loading" id="bearLoading">Cargando datos Bear Markets…</div>
+          </div>
+        </div>
+      </div>
+      <div class="bear-stats">
+        <div class="bear-stat">
+          <span class="bear-stat__val" id="bearPromDias">—</span>
+          <span class="bear-stat__lbl">Días promedio</span>
+        </div>
+        <div class="bear-stat">
+          <span class="bear-stat__val" id="bearDesv">—</span>
+          <span class="bear-stat__lbl">Desv. estándar</span>
+        </div>
+        <div class="bear-stat">
+          <span class="bear-stat__val" id="bearDiasActual">—</span>
+          <span class="bear-stat__lbl">Días actuales</span>
+        </div>
+        <div class="bear-stat">
+          <span class="bear-stat__val" id="bearPct">—</span>
+          <span class="bear-stat__lbl">% del promedio recorrido</span>
+        </div>
+      </div>
+    </div>
 
   </section>
 
